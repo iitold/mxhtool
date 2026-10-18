@@ -1,12 +1,12 @@
 /**
  * Telegram notifications.
  */
-import { env } from './env';
+import { getSecret } from './secrets';
 import { logError, logInfo } from './logger';
 
 export async function sendTelegram(html: string): Promise<boolean> {
-  const token = env('TELEGRAM_BOT_TOKEN');
-  const chatId = env('TELEGRAM_CHAT_ID');
+  const token = await getSecret('TELEGRAM_BOT_TOKEN');
+  const chatId = await getSecret('TELEGRAM_CHAT_ID');
   if (!token || !chatId) return false;
 
   try {
