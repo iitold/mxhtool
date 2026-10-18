@@ -18,7 +18,8 @@ import {
   Save,
   ChevronLeft,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { CONFIG_GROUPS, type ConfigField } from '@/lib/configSchema';
 import { THEMES, THEME_KEYS, resolveTheme, CUSTOM_COLOR_FIELDS } from '@/render/theme';
@@ -51,6 +52,25 @@ interface RuleRow {
   id: string;
   name: string;
   desc: string;
+}
+
+interface AiTestRow {
+  kind: 'chat' | 'embed';
+  keyLabel: string;
+  model: string;
+  ok: boolean;
+  status: number;
+  ms: number;
+  dims?: number | null;
+  error: string | null;
+}
+interface AiTestResponse {
+  success: boolean;
+  error?: string;
+  keyCount?: number;
+  models?: string[];
+  results?: AiTestRow[];
+  summary?: { passed: number; total: number; anyOk: boolean };
 }
 
 type TabId = 'overview' | 'appearance' | 'content' | 'settings' | 'connections' | 'logs';
@@ -103,6 +123,8 @@ export default function AdminClient(props: {
   const [secrets, setSecrets] = useState<{ key: string; set: boolean }[]>([]);
   const [secretInputs, setSecretInputs] = useState<Record<string, string>>({});
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiResult, setAiResult] = useState<AiTestResponse | null>(null);
 
   function setValue(key: string, value: string) {
     setConfig((c) => ({ ...c, [key]: value }));
@@ -161,8 +183,23 @@ export default function AdminClient(props: {
     }
   }
 
-  async function signOut() {
-    await fetch('/api/auth/signout', { method: 'POST' });
+  async function runAiTest() {
+    setAiTesting(true);
+    setToast('');
+    setAiResult(null);
+    try {
+      const res = await fetch('/api/ai/test', { method: 'POST' });
+      const json: AiTestResponse = await res.json();
+      setAiResult(json);
+      if (!json.success) setToast(json.error ?? 'Kiểm tra thất bại');
+    } catch (e: any) {
+      setToast(e.message);
+    } finally {
+      setAiTesting(false);
+    }
+  }
+
+  async function signOut() {    await fetch('/api/auth/signout', { method: 'POST' });
     router.push('/login');
     router.refresh();
   }
@@ -526,6 +563,89 @@ export default function AdminClient(props: {
             >
               <Save size={16} /> Lưu credentials
             </button>
+          </section>
+
+          <section className="card p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 font-semibold text-white">
+                  <Zap size={16} /> Kiểm tra AI
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Gọi thử từng API key × model để biết cái nào còn sống. Có thể tốn vài request quota.
+                </p>
+              </div>
+              <button
+                disabled={aiTesting}
+                onClick={runAiTest}
+                className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 py-2 text-sm font-semibold"
+              >
+                <Zap size={16} /> {aiTesting ? 'Đang kiểm tra…' : 'Kiểm tra'}
+              </button>
+            </div>
+
+            {aiResult?.success && aiResult.results && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <span className="text-slate-400">
+                    Key kiểm tra: <b className="text-white">{aiResult.keyCount}</b>
+                  </span>
+                  <span className={aiResult.summary?.anyOk ? 'text-emerald-400' : 'text-red-400'}>
+                    {aiResult.summary?.passed}/{aiResult.summary?.total} OK
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-slate-500">
+                      <tr className="text-left">
+                        <th className="py-1 pr-4 font-medium">Loại</th>
+                        <th className="py-1 pr-4 font-medium">Key</th>
+                        <th className="py-1 pr-4 font-medium">Model</th>
+                        <th className="py-1 pr-4 font-medium">Kết quả</th>
+                        <th className="py-1 font-medium">Chi tiết</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono">
+                      {aiResult.results.map((r, i) => (
+                        <tr key={i} className="border-t border-slate-800">
+                          <td className="py-1.5 pr-4 text-slate-400">{r.kind === 'embed' ? 'embed' : 'chat'}</td>
+                          <td className="py-1.5 pr-4 text-slate-400">{r.keyLabel}</td>
+                          <td className="py-1.5 pr-4 text-white">{r.model}</td>
+                          <td className="py-1.5 pr-4">
+                            <span
+                              className={`inline-flex items-center gap-1.5 ${
+                                r.ok ? 'text-emerald-400' : 'text-red-400'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-2 w-2 rounded-full ${
+                                  r.ok ? 'bg-emerald-500' : 'bg-red-500'
+                                }`}
+                              />
+                              {r.ok ? 'OK' : `Lỗi ${r.status || ''}`}
+                            </span>
+                          </td>
+                          <td className="py-1.5 text-slate-500">
+                            {r.ok
+                              ? `${r.ms}ms${r.kind === 'embed' && r.dims ? ` · ${r.dims} chiều` : ''}`
+                              : r.error}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Gợi ý: <b className="text-slate-300">429</b> = key còn sống nhưng hết quota (bình thường, sẽ tự đổi
+                  model). <b className="text-slate-300">400/403</b> = key sai hoặc bị chặn. <b className="text-slate-300">404</b> =
+                  tên model không tồn tại.
+                </p>
+              </div>
+            )}
+
+            {aiResult && !aiResult.success && (
+              <p className="text-sm text-red-400">{aiResult.error}</p>
+            )}
           </section>
         </div>
       )}
