@@ -11,15 +11,110 @@ import { resolveLayout } from '../src/render/layout';
 const themeKey = process.env.THEME ?? 'dark_slate';
 
 const sample = {
-  title: 'WeakMap trong JavaScript',
+  title: 'SQL JOIN trong PostgreSQL',
   theme: resolveTheme(themeKey, {}),
   layout: resolveLayout({}),
   footerHandle: '@it.old',
   slides: [
-    'Bạn có biết WeakMap có thể chống memory leak mà bạn không ngờ tới?',
-    'Cache theo object\n• WeakMap cho phép key là object bị thu hồi tự động\n```js\nconst cache = new WeakMap();\ncache.set(node, computed);\n```',
-    'Vì sao quan trọng\n• Map giữ reference → object không bao giờ bị GC\n• WeakMap để GC dọn khi không còn ai tham chiếu',
-    'Kết luận\n• Dùng WeakMap cho cache gắn với object\n• Save lại để dùng khi cần!'
+    { title: '', blocks: [{ type: 'text', bullets: ['90% bug báo cáo đến từ JOIN sai — không phải từ dữ liệu'] }] },
+    {
+      title: 'INNER JOIN là gì',
+      blocks: [
+        { type: 'text', bullets: ['Chỉ trả về bản ghi khớp ở cả hai bảng'] },
+        {
+          type: 'diagram',
+          variant: 'join',
+          title: 'users ⋈ orders',
+          leftLabel: 'users',
+          rightLabel: 'orders',
+          leftItems: ['id  (PK)', 'full_name', 'email'],
+          rightItems: ['id  (PK)', 'user_id  (FK)', 'total'],
+          overlap: ['users.id = orders.user_id'],
+          caption: 'INNER JOIN lấy phần giao'
+        }
+      ]
+    },
+    {
+      title: 'Đọc kế hoạch thực thi',
+      blocks: [
+        {
+          type: 'diff',
+          lang: 'sql',
+          lines: [
+            '  EXPLAIN ANALYZE',
+            '  SELECT u.full_name, o.total',
+            '  FROM users u',
+            '- JOIN orders o ON o.user_id = u.id',
+            '+ JOIN orders o ON o.user_id = u.id AND o.status = \'paid\'',
+            '  WHERE u.created_at > now() - interval \'30 days\';'
+          ]
+        },
+        { type: 'callout', variant: 'warn', title: 'Cẩn thận', text: 'Điều kiện lọc đặt sau ON thay đổi ngữ nghĩa của LEFT JOIN.' }
+      ]
+    },
+    {
+      title: 'Các loại JOIN',
+      blocks: [
+        {
+          type: 'table',
+          headers: ['Loại', 'Giữ lại', 'Hàng NULL'],
+          rows: [
+            ['INNER', 'Chỉ khớp', 'Không'],
+            ['LEFT', 'Toàn bộ bảng trái', 'Có'],
+            ['RIGHT', 'Toàn bộ bảng phải', 'Có'],
+            ['FULL', 'Cả hai bảng', 'Có']
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Quy trình tối ưu',
+      blocks: [
+        {
+          type: 'steps',
+          direction: 'column',
+          items: [
+            { label: 'EXPLAIN ANALYZE', detail: 'Đo thật, đừng đoán' },
+            { label: 'Đối chiếu index', detail: 'FK luôn cần index ở bảng con' },
+            { label: 'Chuẩn hoá lại truy vấn', detail: 'Tránh JOIN không cần thiết' }
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Kết quả',
+      blocks: [
+        {
+          type: 'stat',
+          items: [
+            { value: '12ms', label: 'từ 480ms' },
+            { value: '40x', label: 'nhanh hơn' }
+          ]
+        },
+        {
+          type: 'diagram',
+          variant: 'bars',
+          title: 'Thời gian truy vấn',
+          bars: [
+            { label: 'Trước', value: 480, max: 500 },
+            { label: 'Sau', value: 12, max: 500 }
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Map vs WeakMap',
+      blocks: [
+        {
+          type: 'compare',
+          beforeTitle: 'Trước',
+          afterTitle: 'Sau',
+          before: ['JOIN toàn bộ bảng', 'Full scan 1.2M dòng'],
+          after: ['JOIN có index', 'Index scan 3.4k dòng']
+        }
+      ]
+    },
+    { title: '', blocks: [{ type: 'text', bullets: ['Lưu lại kẻo quên khi tối ưu query!'] }] }
   ]
 };
 

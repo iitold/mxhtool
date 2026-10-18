@@ -96,11 +96,89 @@ const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-slate-600'
 };
 
-const SAMPLE_SLIDES = [
-  'Bạn có biết WeakMap có thể chống memory leak mà bạn không ngờ tới?',
-  'Cache theo object\n• Cho phép key là object bị thu hồi tự động\n```js\nconst cache = new WeakMap();\ncache.set(node, computed);\n```',
-  'Vì sao quan trọng\n• Map giữ reference nên object không bao giờ bị GC\n• WeakMap để GC dọn khi không còn ai tham chiếu',
-  'Kết luận\n• Dùng WeakMap cho cache gắn với object\n• Save lại để dùng khi cần!'
+const SAMPLE_SLIDES: unknown[] = [
+  { title: '', blocks: [{ type: 'text', bullets: ['WeakMap chống memory leak mà hầu như ai cũng bỏ qua'] }] },
+  {
+    title: 'Cách dùng',
+    blocks: [
+      { type: 'text', bullets: ['Key là object, tự động bị thu hồi khi không còn tham chiếu'] },
+      {
+        type: 'code',
+        lang: 'js',
+        code: 'const cache = new WeakMap();\nfunction compute(node) {\n  if (cache.has(node)) return cache.get(node);\n  const v = heavy(node);\n  cache.set(node, v);\n  return v;\n}'
+      }
+    ]
+  },
+  {
+    title: 'Map vs WeakMap',
+    blocks: [
+      {
+        type: 'compare',
+        beforeTitle: 'Map',
+        afterTitle: 'WeakMap',
+        before: ['Giữ reference vĩnh viễn', 'Object không bao giờ bị GC', 'Phải tự delete() thủ công'],
+        after: ['Chỉ giữ reference yếu', 'GC tự dọn khi hết tham chiếu', 'Không cần quản lý thủ công']
+      }
+    ]
+  },
+  {
+    title: 'So sánh nhanh',
+    blocks: [
+      {
+        type: 'table',
+        headers: ['Tiêu chí', 'Map', 'WeakMap'],
+        rows: [
+          ['Key object', 'Có', 'Có'],
+          ['Key primitive', 'Có', 'Không'],
+          ['Iterable', 'Có', 'Không'],
+          ['GC tự động', 'Không', 'Có']
+        ]
+      }
+    ]
+  },
+  {
+    title: 'Khi nào dùng',
+    blocks: [
+      {
+        type: 'steps',
+        direction: 'column',
+        items: [
+          { label: 'Cache theo DOM node', detail: 'Lưu dữ liệu gắn với element' },
+          { label: 'Metadata object', detail: 'Gán thông tin phụ không gây leak' },
+          { label: 'Listener nội bộ', detail: 'Tránh giữ controller sau khi unmount' }
+        ]
+      }
+    ]
+  },
+  {
+    title: 'Tác động',
+    blocks: [
+      {
+        type: 'stat',
+        items: [
+          { value: '-40%', label: 'bộ nhớ giữ lại' },
+          { value: '0', label: 'dòng delete() thủ công' }
+        ]
+      },
+      { type: 'callout', variant: 'warn', title: 'Lưu ý', text: 'WeakMap không iterable — không thể liệt kê hay clear toàn bộ.' }
+    ]
+  },
+  {
+    title: 'Bộ nhớ giữ lại',
+    blocks: [
+      {
+        type: 'diagram',
+        variant: 'bars',
+        title: 'Object còn giữ sau khi unmount',
+        bars: [
+          { label: 'Map', value: 120, max: 140 },
+          { label: 'WeakMap', value: 8, max: 140 }
+        ],
+        caption: 'Càng thấp càng tốt'
+      },
+      { type: 'text', bullets: ['Lưu lại để dùng khi cần!'] }
+    ]
+  }
 ];
 const SAMPLE_TITLE = 'WeakMap trong JavaScript';
 const PREVIEW_W = 300;

@@ -105,7 +105,7 @@ export interface CreatePostInput {
   title: string;
   caption: string;
   keywords: string[];
-  slides: string[];
+  slides: unknown[];
   score: unknown;
 }
 

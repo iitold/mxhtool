@@ -9,7 +9,7 @@ import type { Theme } from './theme';
 import type { LayoutOptions } from './layout';
 
 export interface RenderOptions {
-  slides: string[];
+  slides: unknown[];
   title: string;
   theme: Theme;
   layout: LayoutOptions;
