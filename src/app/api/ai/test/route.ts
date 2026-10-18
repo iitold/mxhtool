@@ -7,6 +7,7 @@ export const runtime = 'edge';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const MAX_KEYS = 3;
 const MAX_MODELS = 10;
+const PING_TOKENS = 512;
 
 interface ChatResult {
   kind: 'chat';
@@ -33,38 +34,48 @@ function mask(key: string): string {
   return `${key.slice(0, 6)}…${key.slice(-4)}`;
 }
 
-async function testChat(key: string, model: string): Promise<{ ok: boolean; status: number; error: string | null }> {
-  const started = Date.now();
+function parseError(res: Response, bodyText: string): string {
+  let message = `HTTP ${res.status}`;
+  try {
+    const err = JSON.parse(bodyText)?.error;
+    if (err?.message) message = `${err.status ?? res.status}: ${err.message}`.slice(0, 240);
+  } catch {
+    message = `${message}: ${bodyText.slice(0, 160)}`;
+  }
+  return message;
+}
+
+async function testChat(
+  key: string,
+  model: string
+): Promise<{ ok: boolean; status: number; error: string | null }> {
   try {
     const res = await fetch(`${API_BASE}${model}:generateContent?key=${key}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: 'ping' }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 8 }
+        contents: [{ parts: [{ text: 'Say OK' }] }],
+        // Gemini 3.x spend tokens "thinking" first, so give it a real budget.
+        generationConfig: { temperature: 0, maxOutputTokens: PING_TOKENS }
       })
     });
     const bodyText = await res.text();
-    if (res.ok) {
-      const json = JSON.parse(bodyText);
-      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) return { ok: false, status: res.status, error: 'Không có nội dung trả về' };
-      return { ok: true, status: res.status, error: null };
+    if (!res.ok) return { ok: false, status: res.status, error: parseError(res, bodyText) };
+    const json = JSON.parse(bodyText);
+    const candidates = json?.candidates;
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return { ok: false, status: res.status, error: `Không có candidate (finishReason: ${json?.candidates?.[0]?.finishReason ?? 'n/a'})` };
     }
-    let message = `HTTP ${res.status}`;
-    try {
-      const err = JSON.parse(bodyText)?.error;
-      if (err?.message) message = `${err.status ?? res.status}: ${err.message}`.slice(0, 240);
-    } catch {
-      message = `${message}: ${bodyText.slice(0, 160)}`;
-    }
-    return { ok: false, status: res.status, error: message };
+    return { ok: true, status: res.status, error: null };
   } catch (e: any) {
-    return { ok: false, status: 0, error: `${e.message} (${Date.now() - started}ms)` };
+    return { ok: false, status: 0, error: e.message };
   }
 }
 
-async function testEmbed(key: string, model: string): Promise<{ ok: boolean; status: number; dims: number | null; error: string | null }> {
+async function testEmbed(
+  key: string,
+  model: string
+): Promise<{ ok: boolean; status: number; dims: number | null; error: string | null }> {
   try {
     const res = await fetch(`${API_BASE}${model}:embedContent?key=${key}`, {
       method: 'POST',
@@ -76,20 +87,11 @@ async function testEmbed(key: string, model: string): Promise<{ ok: boolean; sta
       })
     });
     const bodyText = await res.text();
-    if (res.ok) {
-      const json = JSON.parse(bodyText);
-      const values = json?.embedding?.values;
-      if (!values?.length) return { ok: false, status: res.status, dims: null, error: 'Không có vector trả về' };
-      return { ok: true, status: res.status, dims: values.length, error: null };
-    }
-    let message = `HTTP ${res.status}`;
-    try {
-      const err = JSON.parse(bodyText)?.error;
-      if (err?.message) message = `${err.status ?? res.status}: ${err.message}`.slice(0, 240);
-    } catch {
-      message = `${message}: ${bodyText.slice(0, 160)}`;
-    }
-    return { ok: false, status: res.status, dims: null, error: message };
+    if (!res.ok) return { ok: false, status: res.status, dims: null, error: parseError(res, bodyText) };
+    const json = JSON.parse(bodyText);
+    const values = json?.embedding?.values;
+    if (!values?.length) return { ok: false, status: res.status, dims: null, error: 'Không có vector trả về' };
+    return { ok: true, status: res.status, dims: values.length, error: null };
   } catch (e: any) {
     return { ok: false, status: 0, dims: null, error: e.message };
   }
@@ -115,10 +117,13 @@ export async function POST() {
   const emodels = (await embedModels()).slice(0, 3);
 
   const chat: ChatResult[] = [];
+  const liveKeys: string[] = [];
   for (const key of keys) {
+    let keyAlive = false;
     for (const model of models) {
       const started = Date.now();
       const r = await testChat(key, model);
+      if (r.ok) keyAlive = true;
       chat.push({
         kind: 'chat',
         keyLabel: mask(key),
@@ -129,16 +134,18 @@ export async function POST() {
         error: r.error
       });
     }
+    if (keyAlive) liveKeys.push(key);
   }
 
-  const primaryKey = keys[0];
+  // Embeddings: test with a live key (fall back to the first since none may pass chat).
+  const embedKey = liveKeys[0] ?? keys[0];
   const embed: EmbedResult[] = [];
   for (const model of emodels) {
     const started = Date.now();
-    const r = await testEmbed(primaryKey, model);
+    const r = await testEmbed(embedKey, model);
     embed.push({
       kind: 'embed',
-      keyLabel: mask(primaryKey),
+      keyLabel: mask(embedKey),
       model,
       ok: r.ok,
       status: r.status,
@@ -154,8 +161,9 @@ export async function POST() {
   return NextResponse.json({
     success: true,
     keyCount: keys.length,
+    liveKeys: liveKeys.length,
     models,
     results,
-    summary: { passed, total: results.length, anyOk: passed > 0 }
+    summary: { passed, total: results.length, anyOk: passed > 0, liveKeys: liveKeys.length }
   });
 }

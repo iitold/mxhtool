@@ -134,7 +134,7 @@ async function scoreContent(content: RawContent, topic: string): Promise<Quality
     `CAPTION: ${content.caption}\n`;
 
   try {
-    const score = await callAIJson<QualityScore>(prompt, { temperature: 0.2, maxTokens: 1024 });
+    const score = await callAIJson<QualityScore>(prompt, { temperature: 0.2, maxTokens: 2048 });
     const overall = Number(score.overall) || 0;
     return { ...score, overall } as QualityScore;
   } catch {

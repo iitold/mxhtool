@@ -70,7 +70,7 @@ interface AiTestResponse {
   keyCount?: number;
   models?: string[];
   results?: AiTestRow[];
-  summary?: { passed: number; total: number; anyOk: boolean };
+  summary?: { passed: number; total: number; anyOk: boolean; liveKeys: number };
 }
 
 type TabId = 'overview' | 'appearance' | 'content' | 'settings' | 'connections' | 'logs';
@@ -589,6 +589,9 @@ export default function AdminClient(props: {
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <span className="text-slate-400">
                     Key kiểm tra: <b className="text-white">{aiResult.keyCount}</b>
+                  </span>
+                  <span className={aiResult.summary?.liveKeys ? 'text-emerald-400' : 'text-red-400'}>
+                    Key sống: {aiResult.summary?.liveKeys ?? 0}/{aiResult.keyCount}
                   </span>
                   <span className={aiResult.summary?.anyOk ? 'text-emerald-400' : 'text-red-400'}>
                     {aiResult.summary?.passed}/{aiResult.summary?.total} OK

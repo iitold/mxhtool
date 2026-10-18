@@ -10,7 +10,8 @@ const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
 /**
  * Fallback chain: newer/stronger models first, weaker/high-quota ones last.
- * Only models with a non-zero quota in the account are listed.
+ * Only models with a non-zero quota AND that support generateContent.
+ * (Gemma 4 and gemini-2.5-flash-lite are excluded — see /api/ai/test.)
  */
 const DEFAULT_MODELS = [
   'gemini-3.8-flash',
@@ -18,10 +19,7 @@ const DEFAULT_MODELS = [
   'gemini-3-flash-preview',
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemma-4-31b',
-  'gemma-4-26b'
+  'gemini-2.5-flash'
 ].join(',');
 const DEFAULT_EMBED_MODELS = 'gemini-embedding-001,gemini-embedding-2';
 
