@@ -16,13 +16,14 @@ interface PostResult {
 }
 
 /** Turns TikTok error codes into actionable Vietnamese hints. */
-function friendlyError(code: string, message: string): string {
+function friendlyError(code: string, message: string, sampleUrl = ''): string {
   switch (code) {
     case 'url_ownership_unverified':
       return (
-        `${message} — Ảnh đang dùng PULL_FROM_URL nên TikTok bắt buộc verify quyền sở hữu domain/URL prefix. ` +
-        'Vào TikTok Developer Portal → app → URL properties → thêm URL prefix của bucket Supabase ' +
-        'và upload file xác minh vào bucket.'
+        `${message} — URL ảnh (${sampleUrl}) chưa thuộc domain/prefix đã verify. Kiểm tra: ` +
+        '(1) URL prefix đã verify trong TikTok Developer Portal phải khớp đầu URL này; ' +
+        '(2) phải verify Ở CHẾ ĐỘ PRODUCTION; ' +
+        '(3) app đang đăng bài (TIKTOK_CLIENT_KEY) phải ĐÚNG LÀ app đã verify URL properties.'
       );
     case 'privacy_level_option_mismatch':
       return `${message} — privacy_level không nằm trong danh sách creator cho phép (do app chưa audit).`;
@@ -117,7 +118,7 @@ export async function postPhotoCarousel(imageUrls: string[], caption: string): P
   if (status !== 200 || (json.error && json.error.code !== 'ok')) {
     const code = json?.error?.code ?? '';
     const message = json?.error?.message ?? JSON.stringify(json);
-    const err = friendlyError(code, message);
+    const err = friendlyError(code, message, images[0]);
     logError('tiktok', `Init failed: ${err}`);
     return { success: false, error: err };
   }

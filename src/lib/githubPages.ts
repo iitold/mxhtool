@@ -1,13 +1,50 @@
 /**
  * GitHub Pages image host — uploads rendered slides to a repo and returns
  * public URLs under a verified URL prefix (needed for TikTok PULL_FROM_URL).
- * Runs in Node (GitHub Actions) and uses the GitHub Contents API.
+ * Runs in Node (GitHub Actions) and uses the Git Data API (one commit per post).
  */
 import { getSecret } from './secrets';
 import { logInfo } from './logger';
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function ghHeaders(token: string) {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type': 'application/json',
+    'User-Agent': 'mxht-content-factory'
+  };
+}
+
+function accessHint(repo: string, status: number, detail: string, tokenLabel: string): string {
+  if (status === 403 || status === 404) {
+    return (
+      `Không ghi được vào ${repo} (HTTP ${status}) — token đang dùng: ${tokenLabel}. ` +
+      `Cần PAT có quyền "Contents: Read and write" trên repo ${repo}. ` +
+      `Nếu GITHUB_PAGES_TOKEN trống, hệ thống dùng GITHUB_TOKEN (token đó thường chỉ có quyền repo mxhtool). ` +
+      `Chi tiết: ${detail}`
+    );
+  }
+  return `GitHub upload failed (HTTP ${status}): ${detail}`;
+}
+
+async function ghJson(
+  token: string,
+  url: string,
+  init: RequestInit,
+  repo: string,
+  tokenLabel: string
+): Promise<any> {
+  const res = await fetch(url, { ...init, headers: ghHeaders(token) });
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 200);
+    throw new Error(accessHint(repo, res.status, detail, tokenLabel));
+  }
+  return res.status === 204 ? null : res.json();
 }
 
 /** Derives the Pages base URL from `owner/repo` unless an explicit base is set. */
@@ -18,53 +55,10 @@ export function pagesBaseUrl(repo: string, base?: string): string {
   return `https://${owner}.github.io/${name}/`;
 }
 
-async function putFile(
-  token: string,
-  repo: string,
-  branch: string,
-  path: string,
-  content: Buffer,
-  message: string,
-  tokenLabel = 'token'
-): Promise<void> {
-  const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'Content-Type': 'application/json',
-    'User-Agent': 'mxht-content-factory'
-  };
-  const body = JSON.stringify({ message, content: content.toString('base64'), branch });
-
-  let res = await fetch(url, { method: 'PUT', headers, body });
-  if (res.status === 422) {
-    // File already exists → fetch its sha and overwrite.
-    const current = await fetch(`${url}?ref=${encodeURIComponent(branch)}`, { headers });
-    if (current.ok) {
-      const sha = (await current.json())?.sha;
-      res = await fetch(url, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ message, content: content.toString('base64'), branch, sha })
-      });
-    }
-  }
-  if (res.status !== 201 && res.status !== 200) {
-    const detail = (await res.text()).slice(0, 200);
-    if (res.status === 403 || res.status === 404) {
-      throw new Error(
-        `Không ghi được vào ${repo} (HTTP ${res.status}) — token đang dùng: ${tokenLabel}. ` +
-          `Cần PAT có quyền "Contents: Read and write" trên repo ${repo}. ` +
-          `Nếu GITHUB_PAGES_TOKEN trống, hệ thống dùng GITHUB_TOKEN (token đó thường chỉ có quyền repo mxhtool). ` +
-          `Chi tiết: ${detail}`
-      );
-    }
-    throw new Error(`GitHub upload failed (HTTP ${res.status}): ${detail}`);
-  }
-}
-
-/** Uploads buffers as `<prefix>/slide_N.jpeg`. Returns the public URLs. */
+/**
+ * Commits all slides to the repo in one commit (single Pages build).
+ * Returns the public URLs.
+ */
 export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Promise<string[]> {
   const repo = await getSecret('GITHUB_PAGES_REPO');
   const pagesToken = await getSecret('GITHUB_PAGES_TOKEN');
@@ -78,39 +72,85 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
   if (!repo || !token) {
     throw new Error('GITHUB_PAGES_REPO / GITHUB_PAGES_TOKEN (hoặc GITHUB_TOKEN) chưa cấu hình');
   }
+  const api = `https://api.github.com/repos/${repo}`;
 
+  // 1. Current branch head + base tree.
+  const ref = await ghJson(
+    token,
+    `${api}/git/ref/heads/${encodeURIComponent(branch)}`,
+    { method: 'GET' },
+    repo,
+    tokenLabel
+  );
+  const parentSha: string = ref.object.sha;
+  const commit = await ghJson(token, `${api}/git/commits/${parentSha}`, { method: 'GET' }, repo, tokenLabel);
+  const baseTree: string = commit.tree.sha;
+
+  // 2. One blob per slide.
   const urls: string[] = [];
+  const tree: { path: string; mode: string; type: string; sha: string }[] = [];
   for (let i = 0; i < buffers.length; i++) {
     const rel = `${prefix}/slide_${i + 1}.jpeg`;
     const filePath = repoPath ? `${repoPath}/${rel}` : rel;
-    await putFile(
+    const blob = await ghJson(
       token,
+      `${api}/git/blobs`,
+      { method: 'POST', body: JSON.stringify({ content: buffers[i].toString('base64'), encoding: 'base64' }) },
       repo,
-      branch,
-      filePath,
-      buffers[i],
-      `slides: ${rel} (${i + 1}/${buffers.length})`,
       tokenLabel
     );
+    tree.push({ path: filePath, mode: '100644', type: 'blob', sha: blob.sha });
     urls.push(base + rel);
   }
-  logInfo('storage', `Uploaded ${urls.length} images to GitHub Pages ${repo}`);
+
+  // 3. New tree → commit → move branch.
+  const newTree = await ghJson(
+    token,
+    `${api}/git/trees`,
+    { method: 'POST', body: JSON.stringify({ base_tree: baseTree, tree }) },
+    repo,
+    tokenLabel
+  );
+  const newCommit = await ghJson(
+    token,
+    `${api}/git/commits`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        message: `slides: ${prefix} (${buffers.length} images)`,
+        tree: newTree.sha,
+        parents: [parentSha]
+      })
+    },
+    repo,
+    tokenLabel
+  );
+  await ghJson(
+    token,
+    `${api}/git/refs/heads/${encodeURIComponent(branch)}`,
+    { method: 'PATCH', body: JSON.stringify({ sha: newCommit.sha }) },
+    repo,
+    tokenLabel
+  );
+
+  logInfo('storage', `Uploaded ${urls.length} images to GitHub Pages ${repo} (1 commit)`);
   return urls;
 }
 
 /**
- * Waits until every URL is publicly reachable (GitHub Pages needs a build).
- * Returns false if it times out.
+ * Waits until the slides are publicly reachable (GitHub Pages needs a build).
+ * Checks the first and last URL (they share the same build). Returns false on timeout.
  */
 export async function waitForPublicUrls(
   urls: string[],
-  { tries = 24, delayMs = 5000 } = {}
+  { tries = 60, delayMs = 5000 } = {}
 ): Promise<boolean> {
+  const probes = urls.length > 1 ? [urls[0], urls[urls.length - 1]] : urls;
   for (let attempt = 0; attempt < tries; attempt++) {
     let allOk = true;
-    for (const url of urls) {
+    for (const url of probes) {
       try {
-        const res = await fetch(url, { method: 'GET' });
+        const res = await fetch(url, { method: 'GET', redirect: 'error' });
         if (!res.ok) {
           allOk = false;
           break;
@@ -121,7 +161,7 @@ export async function waitForPublicUrls(
       }
     }
     if (allOk) {
-      logInfo('storage', `All ${urls.length} images are live`);
+      logInfo('storage', `Images are live (after ~${attempt * (delayMs / 1000)}s)`);
       return true;
     }
     await sleep(delayMs);
