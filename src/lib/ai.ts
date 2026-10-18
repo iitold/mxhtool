@@ -8,13 +8,15 @@ import { logInfo, logError } from './logger';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
-const FALLBACK_MODELS = env(
-  'GEMINI_MODELS',
-  'gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash'
-)
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+const DEFAULT_MODELS = 'gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash';
+const DEFAULT_EMBED_MODELS = 'gemini-embedding-001,gemini-embedding-2';
+
+function splitList(value: string): string[] {
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export interface CallOptions {
   temperature?: number;
@@ -46,6 +48,21 @@ export async function geminiKeys(): Promise<string[]> {
     ...geminiKeysFromEnv()
   ];
   return [...new Set(keys)];
+}
+
+/** Fallback model chain: DB override → env → built-in default. */
+export async function geminiModels(): Promise<string[]> {
+  const fromDb = await getSecret('GEMINI_MODELS');
+  return splitList(fromDb || env('GEMINI_MODELS', DEFAULT_MODELS));
+}
+
+/** Embedding model chain (each tried in order until one works). */
+export async function embedModels(): Promise<string[]> {
+  const fromDb = await getSecret('GEMINI_EMBED_MODELS');
+  const list = splitList(fromDb || env('GEMINI_EMBED_MODELS', ''));
+  if (list.length) return list;
+  const single = env('GEMINI_EMBED_MODEL', '');
+  return single ? [single] : splitList(DEFAULT_EMBED_MODELS);
 }
 
 type ErrorAction = 'SWITCH_MODEL' | 'SWITCH_KEY' | 'RETRY';
@@ -102,7 +119,7 @@ export async function callAI(prompt: string, opts: CallOptions = {}): Promise<st
   const keys = await geminiKeys();
   if (keys.length === 0) throw new Error('No GEMINI_API_KEYS configured');
 
-  const models = opts.models?.length ? opts.models : FALLBACK_MODELS;
+  const models = opts.models?.length ? opts.models : await geminiModels();
   const temperature = opts.temperature ?? 0.85;
   const maxTokens = opts.maxTokens ?? 8192;
 
@@ -153,26 +170,33 @@ export async function callAIJson<T = any>(prompt: string, opts: CallOptions = {}
   }
 }
 
-/** Gemini text embedding (768 dims). Returns null if unavailable. */
+/** Gemini text embedding (768 dims, matches the pgvector column). Returns null if unavailable. */
 export async function embed(text: string): Promise<number[] | null> {
   const key = (await geminiKeys())[0];
   if (!key) return null;
-  const model = env('GEMINI_EMBED_MODEL', 'text-embedding-004');
-  const url = `${API_BASE}${model}:embedContent?key=${key}`;
 
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: `models/${model}`,
-        content: { parts: [{ text }] }
-      })
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json?.embedding?.values ?? null;
-  } catch {
-    return null;
+  const models = await embedModels();
+  for (const model of models) {
+    try {
+      const res = await fetch(`${API_BASE}${model}:embedContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: `models/${model}`,
+          content: { parts: [{ text }] },
+          outputDimensionality: 768
+        })
+      });
+      if (!res.ok) {
+        logError('ai', `embed ${model} failed: HTTP ${res.status}`);
+        continue;
+      }
+      const json = await res.json();
+      const values = json?.embedding?.values ?? null;
+      if (values?.length) return values as number[];
+    } catch (e: any) {
+      logError('ai', `embed ${model} error: ${e.message}`);
+    }
   }
+  return null;
 }
