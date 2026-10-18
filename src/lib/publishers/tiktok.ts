@@ -15,6 +15,28 @@ interface PostResult {
   error?: string;
 }
 
+/** Turns TikTok error codes into actionable Vietnamese hints. */
+function friendlyError(code: string, message: string): string {
+  switch (code) {
+    case 'url_ownership_unverified':
+      return (
+        `${message} — Ảnh đang dùng PULL_FROM_URL nên TikTok bắt buộc verify quyền sở hữu domain/URL prefix. ` +
+        'Vào TikTok Developer Portal → app → URL properties → thêm URL prefix của bucket Supabase ' +
+        'và upload file xác minh vào bucket.'
+      );
+    case 'privacy_level_option_mismatch':
+      return `${message} — privacy_level không nằm trong danh sách creator cho phép (do app chưa audit).`;
+    case 'unaudited_client_can_only_post_to_private':
+      return `${message} — App chưa audit nên chỉ đăng được chế độ riêng tư (SELF_ONLY).`;
+    case 'spam_risk_too_many_posts':
+      return `${message} — Đã đạt giới hạn số bài/ngày của tài khoản này.`;
+    case 'spam_risk_too_many_pending_share':
+      return `${message} — Tối đa 5 bài chờ duyệt trong 24h. Đăng lại sau.`;
+    default:
+      return message;
+  }
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   const clientKey = await getSecret('TIKTOK_CLIENT_KEY');
   const clientSecret = await getSecret('TIKTOK_CLIENT_SECRET');
@@ -93,7 +115,9 @@ export async function postPhotoCarousel(imageUrls: string[], caption: string): P
   const { status, json } = await request('/post/publish/content/init/', payload, accessToken);
 
   if (status !== 200 || (json.error && json.error.code !== 'ok')) {
-    const err = JSON.stringify(json.error ?? json);
+    const code = json?.error?.code ?? '';
+    const message = json?.error?.message ?? JSON.stringify(json);
+    const err = friendlyError(code, message);
     logError('tiktok', `Init failed: ${err}`);
     return { success: false, error: err };
   }
