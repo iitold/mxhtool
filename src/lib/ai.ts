@@ -8,8 +8,21 @@ import { logInfo, logError } from './logger';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
-const DEFAULT_MODELS =
-  'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite';
+/**
+ * Fallback chain: newer/stronger models first, weaker/high-quota ones last.
+ * Only models with a non-zero quota in the account are listed.
+ */
+const DEFAULT_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-3.6-flash',
+  'gemini-3-flash-preview',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemma-4-31b',
+  'gemma-4-26b'
+].join(',');
 const DEFAULT_EMBED_MODELS = 'gemini-embedding-001,gemini-embedding-2';
 
 function splitList(value: string): string[] {
@@ -85,22 +98,30 @@ async function callGemini(
   json: boolean
 ): Promise<string> {
   const url = `${API_BASE}${model}:generateContent?key=${apiKey}`;
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature,
-      maxOutputTokens: maxTokens,
-      responseMimeType: json ? 'application/json' : 'text/plain'
-    }
-  };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  const attempt = (useJson: boolean) =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature,
+          maxOutputTokens: maxTokens,
+          ...(useJson ? { responseMimeType: 'application/json' } : {})
+        }
+      })
+    });
 
-  const bodyText = await res.text();
+  let res = await attempt(json);
+  let bodyText = await res.text();
+
+  // Some models (e.g. Gemma) don't support responseMimeType — retry without it.
+  if (!res.ok && json && res.status === 400) {
+    res = await attempt(false);
+    bodyText = await res.text();
+  }
+
   if (!res.ok) {
     const err: any = new Error(`Gemini API ${res.status}: ${bodyText.slice(0, 300)}`);
     err.statusCode = res.status;
