@@ -126,6 +126,16 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
           { value: 'top', label: 'Trên' }
         ]
       },
+      {
+        key: 'card_fit',
+        label: 'Kiểu thẻ nội dung',
+        type: 'select',
+        help: 'Thẻ gọn = thẻ ôm sát nội dung, ít khoảng trống.',
+        options: [
+          { value: 'stretch', label: 'Kéo đầy slide' },
+          { value: 'hug', label: 'Vừa nội dung (thẻ gọn)' }
+        ]
+      },
       { key: 'show_header', label: 'Hiện tiêu đề đầu slide', type: 'bool' },
       { key: 'show_logo', label: 'Hiện logo', type: 'bool' },
       { key: 'show_footer', label: 'Hiện chân slide', type: 'bool' },

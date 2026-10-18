@@ -4,10 +4,12 @@
  */
 export type BulletStyle = 'dot' | 'number' | 'arrow' | 'none';
 export type ContentValign = 'center' | 'top';
+export type CardFit = 'stretch' | 'hug';
 
 export interface LayoutOptions {
   bulletStyle: BulletStyle;
   contentValign: ContentValign;
+  cardFit: CardFit;
   showHeader: boolean;
   showLogo: boolean;
   showFooter: boolean;
@@ -18,12 +20,18 @@ export interface LayoutOptions {
 export const DEFAULT_LAYOUT: LayoutOptions = {
   bulletStyle: 'dot',
   contentValign: 'center',
+  cardFit: 'hug',
   showHeader: true,
   showLogo: true,
   showFooter: true,
   showSlideNumber: true,
   fontFamily: 'Inter'
 };
+
+export const CARD_FITS: { value: CardFit; label: string }[] = [
+  { value: 'stretch', label: 'Kéo đầy slide' },
+  { value: 'hug', label: 'Vừa nội dung (thẻ gọn)' }
+];
 
 export const BULLET_STYLES: { value: BulletStyle; label: string }[] = [
   { value: 'dot', label: 'Chấm tròn' },
@@ -47,9 +55,11 @@ function bool(v: string | undefined, fallback: boolean): boolean {
 export function resolveLayout(cfg: Record<string, string> = {}): LayoutOptions {
   const bullet = (cfg.bullet_style ?? '').trim() as BulletStyle;
   const valign = (cfg.content_valign ?? '').trim() as ContentValign;
+  const fit = (cfg.card_fit ?? '').trim() as CardFit;
   return {
     bulletStyle: ['dot', 'number', 'arrow', 'none'].includes(bullet) ? bullet : DEFAULT_LAYOUT.bulletStyle,
     contentValign: ['center', 'top'].includes(valign) ? valign : DEFAULT_LAYOUT.contentValign,
+    cardFit: ['stretch', 'hug'].includes(fit) ? fit : DEFAULT_LAYOUT.cardFit,
     showHeader: bool(cfg.show_header, DEFAULT_LAYOUT.showHeader),
     showLogo: bool(cfg.show_logo, DEFAULT_LAYOUT.showLogo),
     showFooter: bool(cfg.show_footer, DEFAULT_LAYOUT.showFooter),

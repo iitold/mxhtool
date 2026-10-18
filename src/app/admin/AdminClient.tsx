@@ -164,6 +164,31 @@ const SAMPLE_SLIDES: unknown[] = [
     ]
   },
   {
+    title: 'Refactor',
+    blocks: [
+      {
+        type: 'code-compare',
+        leftTitle: 'Trước',
+        rightTitle: 'Sau',
+        left: { lang: 'js', code: 'if (cache.has(node))\n  return cache.get(node);' },
+        right: { lang: 'js', code: 'const v = heavy(node);\ncache.set(node, v);' }
+      }
+    ]
+  },
+  {
+    title: 'Lịch sử',
+    blocks: [
+      {
+        type: 'timeline',
+        items: [
+          { when: 'v1', label: 'Full scan', detail: '480ms' },
+          { when: 'v2', label: 'Thêm index', detail: '120ms' },
+          { when: 'v3', label: 'Lọc sau JOIN', detail: '12ms' }
+        ]
+      }
+    ]
+  },
+  {
     title: 'Bộ nhớ giữ lại',
     blocks: [
       {

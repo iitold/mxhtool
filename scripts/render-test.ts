@@ -13,7 +13,7 @@ const themeKey = process.env.THEME ?? 'dark_slate';
 const sample = {
   title: 'SQL JOIN trong PostgreSQL',
   theme: resolveTheme(themeKey, {}),
-  layout: resolveLayout({}),
+  layout: resolveLayout({ card_fit: process.env.CARD_FIT ?? '' }),
   footerHandle: '@it.old',
   slides: [
     { title: '', blocks: [{ type: 'text', bullets: ['90% bug báo cáo đến từ JOIN sai — không phải từ dữ liệu'] }] },
@@ -114,7 +114,45 @@ const sample = {
         }
       ]
     },
-    { title: '', blocks: [{ type: 'text', bullets: ['Lưu lại kẻo quên khi tối ưu query!'] }] }
+    { title: '', blocks: [{ type: 'text', bullets: ['Lưu lại kẻo quên khi tối ưu query!'] }] },
+    {
+      title: 'Refactor truy vấn',
+      blocks: [
+        {
+          type: 'code-compare',
+          leftTitle: 'Trước',
+          rightTitle: 'Sau',
+          left: { lang: 'sql', code: 'SELECT *\nFROM users u\nJOIN orders o\n  ON o.user_id = u.id;' },
+          right: { lang: 'sql', code: 'SELECT u.id, o.total\nFROM users u\nJOIN orders o\n  ON o.user_id = u.id\nWHERE o.status = \'paid\';' }
+        }
+      ]
+    },
+    {
+      title: 'Lịch sử thay đổi',
+      blocks: [
+        {
+          type: 'timeline',
+          items: [
+            { when: 'v1', label: 'Full scan', detail: '480ms, 1.2M dòng' },
+            { when: 'v2', label: 'Thêm index FK', detail: '120ms' },
+            { when: 'v3', label: 'Lọc sau JOIN', detail: '12ms' }
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Tự thể hiện',
+      blocks: [
+        {
+          type: 'raw',
+          html: '<h3>Checklist review</h3><ul><li>JOIN có dùng index?</li><li>Có <strong>SELECT *</strong> không?</li><li>Điều kiện lọc đặt đúng chỗ?</li></ul>'
+        }
+      ]
+    },
+    {
+      title: 'Ảnh minh hoạ',
+      blocks: [{ type: 'image', url: 'https://picsum.photos/1200/800', caption: 'Kế hoạch thực thi trên EXPLAIN', fit: 'cover' }]
+    }
   ]
 };
 

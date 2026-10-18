@@ -103,6 +103,18 @@ function renderDiagram(b: Extract<SlideBlock, { type: 'diagram' }>): string {
   </div>`;
 }
 
+/** Removes scripts and inline event handlers from author-supplied HTML. */
+export function sanitizeHtml(html: string): string {
+  return String(html)
+    .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, '')
+    .replace(/<\s*script[^>]*>/gi, '')
+    .replace(/<\s*\/\s*script\s*>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(/javascript:/gi, '');
+}
+
 export function renderBlock(b: SlideBlock, ctx: RenderCtx, index: number): string {
   switch (b.type) {
     case 'text':
@@ -171,6 +183,41 @@ export function renderBlock(b: SlideBlock, ctx: RenderCtx, index: number): strin
 
     case 'diagram':
       return renderDiagram(b);
+
+    case 'raw':
+      return `<div class="raw">${sanitizeHtml(b.html)}</div>`;
+
+    case 'image':
+      return `<figure class="img-block">
+        <img class="img ${b.fit === 'contain' ? 'contain' : 'cover'}" src="${escapeHtml(b.url)}" alt="" />
+        ${b.caption ? `<figcaption class="img-caption">${escapeHtml(b.caption)}</figcaption>` : ''}
+      </figure>`;
+
+    case 'timeline':
+      return `<div class="timeline">${b.items
+        .map(
+          (it) => `<div class="tl-item">
+            <div class="tl-rail"><span class="tl-dot"></span></div>
+            <div class="tl-body">
+              ${it.when ? `<div class="tl-when">${escapeHtml(it.when)}</div>` : ''}
+              <div class="tl-label">${escapeHtml(it.label)}</div>
+              ${it.detail ? `<div class="tl-detail">${escapeHtml(it.detail)}</div>` : ''}
+            </div>
+          </div>`
+        )
+        .join('')}</div>`;
+
+    case 'code-compare':
+      return `<div class="code-compare">
+        <div class="codecol">
+          ${b.leftTitle ? `<div class="codecol-head">${escapeHtml(b.leftTitle)}</div>` : ''}
+          <pre class="code"><code class="hljs">${ctx.highlight(b.left.code, b.left.lang ?? 'text')}</code></pre>
+        </div>
+        <div class="codecol">
+          ${b.rightTitle ? `<div class="codecol-head">${escapeHtml(b.rightTitle)}</div>` : ''}
+          <pre class="code"><code class="hljs">${ctx.highlight(b.right.code, b.right.lang ?? 'text')}</code></pre>
+        </div>
+      </div>`;
   }
 }
 

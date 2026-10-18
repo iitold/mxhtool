@@ -53,7 +53,12 @@ const BLOCK_SCHEMA =
   '- diagram join:  { "type":"diagram","variant":"join","leftLabel":"users","rightLabel":"orders",' +
   '"leftItems":["id","name"],"rightItems":["id","user_id"],"overlap":["users.id = orders.user_id"],"caption":"" }\n' +
   '- diagram venn:  { "type":"diagram","variant":"venn","leftLabel":"A","rightLabel":"B","overlap":["phần chung"] }\n' +
-  '- diagram bars:  { "type":"diagram","variant":"bars","bars":[{"label":"MySQL","value":120,"max":150}] }\n\n';
+  '- diagram bars:  { "type":"diagram","variant":"bars","bars":[{"label":"MySQL","value":120,"max":150}] }\n' +
+  '- timeline:       { "type":"timeline", "items":[{"when":"v1.0","label":"Mốc","detail":"ghi chú"}] }\n' +
+  '- code-compare:   { "type":"code-compare","leftTitle":"Trước","rightTitle":"Sau",' +
+  '"left":{"lang":"ts","code":"..."},"right":{"lang":"ts","code":"..."} }\n' +
+  '- image:          { "type":"image","url":"https://...","caption":"","fit":"cover|contain" }\n' +
+  '- raw:            { "type":"raw","html":"<chỉ dùng khi thật cần; sẽ bị lọc <script>>" }\n\n';
 
 function buildPrompt(topic: string, ruleId: string, minSlides: number, maxSlides: number): string {
   const rule = getRule(ruleId);

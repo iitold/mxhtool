@@ -15,7 +15,11 @@ export type BlockType =
   | 'table'
   | 'stat'
   | 'callout'
-  | 'diagram';
+  | 'diagram'
+  | 'raw'
+  | 'image'
+  | 'timeline'
+  | 'code-compare';
 
 export interface TextBlock {
   type: 'text';
@@ -74,6 +78,28 @@ export interface DiagramBlock {
   /** bars */
   bars?: { label: string; value: number; max?: number }[];
 }
+/** Free-form HTML/CSS (scripts and event handlers are stripped at render). */
+export interface RawBlock {
+  type: 'raw';
+  html: string;
+}
+export interface ImageBlock {
+  type: 'image';
+  url: string;
+  caption?: string;
+  fit?: 'cover' | 'contain';
+}
+export interface TimelineBlock {
+  type: 'timeline';
+  items: { when: string; label: string; detail?: string }[];
+}
+export interface CodeCompareBlock {
+  type: 'code-compare';
+  leftTitle?: string;
+  rightTitle?: string;
+  left: { lang?: string; code: string };
+  right: { lang?: string; code: string };
+}
 export type SlideBlock =
   | TextBlock
   | CodeBlock
@@ -83,7 +109,11 @@ export type SlideBlock =
   | TableBlock
   | StatBlock
   | CalloutBlock
-  | DiagramBlock;
+  | DiagramBlock
+  | RawBlock
+  | ImageBlock
+  | TimelineBlock
+  | CodeCompareBlock;
 
 export interface SlideSpec {
   title?: string;
@@ -152,6 +182,33 @@ function toBlock(raw: any): SlideBlock | null {
           : []
       };
     }
+    case 'raw':
+      return str(raw.html) ? { type: 'raw', html: String(raw.html) } : null;
+    case 'image':
+      return str(raw.url)
+        ? { type: 'image', url: str(raw.url), caption: str(raw.caption) || undefined, fit: raw.fit === 'contain' ? 'contain' : 'cover' }
+        : null;
+    case 'timeline':
+      return Array.isArray(raw.items) && raw.items.length
+        ? {
+            type: 'timeline',
+            items: raw.items
+              .map((it: any) => ({ when: str(it?.when), label: str(it?.label ?? it), detail: str(it?.detail) || undefined }))
+              .filter((it: any) => it.label)
+          }
+        : null;
+    case 'code-compare': {
+      const left = raw.left && str(raw.left.code) ? { lang: str(raw.left.lang) || 'text', code: String(raw.left.code).replace(/\s+$/, '') } : null;
+      const right = raw.right && str(raw.right.code) ? { lang: str(raw.right.lang) || 'text', code: String(raw.right.code).replace(/\s+$/, '') } : null;
+      if (!left && !right) return null;
+      return {
+        type: 'code-compare',
+        leftTitle: str(raw.leftTitle) || undefined,
+        rightTitle: str(raw.rightTitle) || undefined,
+        left: left ?? { lang: 'text', code: '' },
+        right: right ?? { lang: 'text', code: '' }
+      };
+    }
     default:
       return null;
   }
@@ -183,7 +240,7 @@ function fromLegacyString(text: string): SlideSpec {
 }
 
 export function hasCodeBlock(spec: SlideSpec): boolean {
-  return spec.blocks.some((b) => b.type === 'code' || b.type === 'diff');
+  return spec.blocks.some((b) => b.type === 'code' || b.type === 'diff' || b.type === 'code-compare');
 }
 
 /** Flattens a slide to plain text (used for scoring, verification, logs). */
@@ -230,6 +287,19 @@ export function slideToText(spec: SlideSpec): string {
         if (b.overlap?.length) lines.push(`chung: ${b.overlap.join(', ')}`);
         for (const bar of b.bars ?? []) lines.push(`${bar.label}: ${bar.value}`);
         break;
+      case 'raw':
+        lines.push('[HTML]');
+        break;
+      case 'image':
+        lines.push(`[ẢNH] ${b.caption ?? b.url}`);
+        break;
+      case 'timeline':
+        for (const it of b.items) lines.push(`${it.when} — ${it.label}${it.detail ? ': ' + it.detail : ''}`);
+        break;
+      case 'code-compare':
+        lines.push(`[CODE ${b.leftTitle ?? 'A'}]`, '```' + (b.left.lang ?? ''), b.left.code, '```');
+        lines.push(`[CODE ${b.rightTitle ?? 'B'}]`, '```' + (b.right.lang ?? ''), b.right.code, '```');
+        break;
     }
   }
   return lines.join('\n').trim();
@@ -246,6 +316,10 @@ export function codeBlocks(spec: SlideSpec): { lang: string; code: string }[] {
     if (b.type === 'code') out.push({ lang: b.lang ?? 'text', code: b.code });
     else if (b.type === 'diff')
       out.push({ lang: b.lang ?? 'diff', code: b.lines.map((l) => l.replace(/^[+-]/, '')).join('\n') });
+    else if (b.type === 'code-compare') {
+      out.push({ lang: b.left.lang ?? 'text', code: b.left.code });
+      out.push({ lang: b.right.lang ?? 'text', code: b.right.code });
+    }
   }
   return out;
 }
