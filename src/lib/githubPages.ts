@@ -24,7 +24,8 @@ async function putFile(
   branch: string,
   path: string,
   content: Buffer,
-  message: string
+  message: string,
+  tokenLabel = 'token'
 ): Promise<void> {
   const url = `https://api.github.com/repos/${repo}/contents/${path}`;
   const headers = {
@@ -50,14 +51,25 @@ async function putFile(
     }
   }
   if (res.status !== 201 && res.status !== 200) {
-    throw new Error(`GitHub upload failed (HTTP ${res.status}): ${(await res.text()).slice(0, 200)}`);
+    const detail = (await res.text()).slice(0, 200);
+    if (res.status === 403 || res.status === 404) {
+      throw new Error(
+        `Không ghi được vào ${repo} (HTTP ${res.status}) — token đang dùng: ${tokenLabel}. ` +
+          `Cần PAT có quyền "Contents: Read and write" trên repo ${repo}. ` +
+          `Nếu GITHUB_PAGES_TOKEN trống, hệ thống dùng GITHUB_TOKEN (token đó thường chỉ có quyền repo mxhtool). ` +
+          `Chi tiết: ${detail}`
+      );
+    }
+    throw new Error(`GitHub upload failed (HTTP ${res.status}): ${detail}`);
   }
 }
 
 /** Uploads buffers as `<prefix>/slide_N.jpeg`. Returns the public URLs. */
 export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Promise<string[]> {
   const repo = await getSecret('GITHUB_PAGES_REPO');
-  const token = (await getSecret('GITHUB_PAGES_TOKEN')) || (await getSecret('GITHUB_TOKEN'));
+  const pagesToken = await getSecret('GITHUB_PAGES_TOKEN');
+  const token = pagesToken || (await getSecret('GITHUB_TOKEN'));
+  const tokenLabel = pagesToken ? 'GITHUB_PAGES_TOKEN' : 'GITHUB_TOKEN (dự phòng)';
   const branch = (await getSecret('GITHUB_PAGES_BRANCH')) || 'main';
   const base = pagesBaseUrl(repo, await getSecret('GITHUB_PAGES_BASE'));
   // Repo folder that GitHub Pages publishes from (e.g. "docs"); empty = branch root.
@@ -71,7 +83,15 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
   for (let i = 0; i < buffers.length; i++) {
     const rel = `${prefix}/slide_${i + 1}.jpeg`;
     const filePath = repoPath ? `${repoPath}/${rel}` : rel;
-    await putFile(token, repo, branch, filePath, buffers[i], `slides: ${rel} (${i + 1}/${buffers.length})`);
+    await putFile(
+      token,
+      repo,
+      branch,
+      filePath,
+      buffers[i],
+      `slides: ${rel} (${i + 1}/${buffers.length})`,
+      tokenLabel
+    );
     urls.push(base + rel);
   }
   logInfo('storage', `Uploaded ${urls.length} images to GitHub Pages ${repo}`);
