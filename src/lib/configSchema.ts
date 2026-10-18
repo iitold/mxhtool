@@ -148,6 +148,16 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
     title: 'Xuất bản',
     fields: [
       {
+        key: 'image_host',
+        label: 'Nơi lưu ảnh',
+        type: 'select',
+        help: 'TikTok yêu cầu URL ảnh thuộc domain đã verify. Chọn GitHub Pages nếu đã verify prefix github.io.',
+        options: [
+          { value: 'supabase', label: 'Supabase Storage (mặc định)' },
+          { value: 'github', label: 'GitHub Pages (đã verify URL prefix)' }
+        ]
+      },
+      {
         key: 'tiktok_privacy',
         label: 'Quyền riêng tư TikTok',
         type: 'select',

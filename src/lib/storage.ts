@@ -1,7 +1,10 @@
 /**
- * Supabase Storage helper — uploads rendered slides and returns public URLs.
+ * Image hosting — uploads rendered slides and returns public URLs.
+ * Backend is chosen by the `image_host` config (Supabase Storage or GitHub Pages).
  */
+import { getConfig } from './config';
 import { STORAGE_BUCKET } from './env';
+import { uploadToGitHubPages, waitForPublicUrls } from './githubPages';
 import { logInfo } from './logger';
 import { supabaseAdmin } from './supabaseAdmin';
 
@@ -21,6 +24,18 @@ async function ensureBucket() {
 
 /** Upload JPEG buffers under `<prefix>/slide_N.jpeg`, return public URLs in order. */
 export async function uploadImages(buffers: Buffer[], prefix: string): Promise<string[]> {
+  const host = await getConfig('image_host');
+  if (host === 'github') {
+    const urls = await uploadToGitHubPages(buffers, prefix);
+    const live = await waitForPublicUrls(urls);
+    if (!live) {
+      throw new Error(
+        'Ảnh đã đẩy lên GitHub nhưng chưa public (GitHub Pages cần thời gian build). Thử lại sau 1-2 phút.'
+      );
+    }
+    return urls;
+  }
+
   await ensureBucket();
   const supabase = supabaseAdmin();
   const urls: string[] = [];

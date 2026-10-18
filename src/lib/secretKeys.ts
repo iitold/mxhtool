@@ -21,7 +21,12 @@ export const SECRET_KEYS = [
   'GITHUB_TOKEN',
   'GITHUB_REPO',
   'GITHUB_WORKFLOW',
-  'GITHUB_BRANCH'
+  'GITHUB_BRANCH',
+  'GITHUB_PAGES_REPO',
+  'GITHUB_PAGES_BRANCH',
+  'GITHUB_PAGES_BASE',
+  'GITHUB_PAGES_PATH',
+  'GITHUB_PAGES_TOKEN'
 ] as const;
 
 export type SecretKey = (typeof SECRET_KEYS)[number];
