@@ -72,10 +72,10 @@ npm run pipeline:force
 npm run dev          # http://localhost:3000 → /login
 ```
 
-Deploy lên **Cloudflare Pages** (khuyến nghị, `mxht.pages.dev`):
-1. Tạo Pages project tên `mxht` (Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git).
+Deploy lên **Cloudflare Pages** (khuyến nghị, `mxhtool.pages.dev`):
+1. Tạo Pages project tên `mxhtool` (Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git). Chọn repo `iitold/mxhtool`, branch `main`.
 2. **Build command**: `npx @cloudflare/next-on-pages` — **Output directory**: `.vercel/output/static`.
-3. Environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+3. Environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NODE_VERSION=20`.
 4. Settings → Functions → **Compatibility flags** = `nodejs_compat` (đã khai báo trong `wrangler.toml`).
 
 Hoặc deploy tự động bằng GitHub Actions (`deploy-pages.yml`): thêm repo secrets `CLOUDFLARE_API_TOKEN` (quyền *Cloudflare Pages: Edit*) và `CLOUDFLARE_ACCOUNT_ID`.
@@ -86,7 +86,7 @@ Cũng có thể deploy lên Vercel: import repo, thêm các biến trong `.env.e
 ### Đăng nhập Google (tùy chọn)
 1. Google Cloud Console → tạo **OAuth client** (Web application). Authorized redirect URI = `https://qntfywlfodbpguxdsemi.supabase.co/auth/v1/callback`.
 2. Supabase → Authentication → Providers → **Google**: dán Client ID/Secret.
-3. Supabase → Authentication → URL Configuration → thêm `https://mxht.pages.dev/auth/callback` vào *Redirect URLs*.
+3. Supabase → Authentication → URL Configuration → thêm `https://mxhtool.pages.dev/auth/callback` vào *Redirect URLs*.
 4. Trên `/login` bấm **Đăng nhập bằng Google** (hoặc dùng email/mật khẩu, magic link).
 
 ### Credentials trên web UI
