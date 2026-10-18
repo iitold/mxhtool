@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { embedModels, geminiKeys, geminiModels } from '@/lib/ai';
+import { embedModels, geminiKeyEntries, geminiModels } from '@/lib/ai';
 import { requireUser } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -12,6 +12,8 @@ const PING_TOKENS = 512;
 interface ChatResult {
   kind: 'chat';
   keyLabel: string;
+  keyLen: number;
+  source: string;
   model: string;
   ok: boolean;
   status: number;
@@ -21,6 +23,8 @@ interface ChatResult {
 interface EmbedResult {
   kind: 'embed';
   keyLabel: string;
+  keyLen: number;
+  source: string;
   model: string;
   ok: boolean;
   status: number;
@@ -105,8 +109,8 @@ export async function POST() {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const keys = (await geminiKeys()).slice(0, MAX_KEYS);
-  if (keys.length === 0) {
+  const entries = (await geminiKeyEntries()).slice(0, MAX_KEYS);
+  if (entries.length === 0) {
     return NextResponse.json(
       { success: false, error: 'Chưa có GEMINI_API_KEYS nào được cấu hình' },
       { status: 400 }
@@ -118,7 +122,7 @@ export async function POST() {
 
   const chat: ChatResult[] = [];
   const liveKeys: string[] = [];
-  for (const key of keys) {
+  for (const { key, source } of entries) {
     let keyAlive = false;
     for (const model of models) {
       const started = Date.now();
@@ -127,6 +131,8 @@ export async function POST() {
       chat.push({
         kind: 'chat',
         keyLabel: mask(key),
+        keyLen: key.length,
+        source,
         model,
         ok: r.ok,
         status: r.status,
@@ -138,14 +144,16 @@ export async function POST() {
   }
 
   // Embeddings: test with a live key (fall back to the first since none may pass chat).
-  const embedKey = liveKeys[0] ?? keys[0];
+  const embedEntry = entries.find((e) => liveKeys.includes(e.key)) ?? entries[0];
   const embed: EmbedResult[] = [];
   for (const model of emodels) {
     const started = Date.now();
-    const r = await testEmbed(embedKey, model);
+    const r = await testEmbed(embedEntry.key, model);
     embed.push({
       kind: 'embed',
-      keyLabel: mask(embedKey),
+      keyLabel: mask(embedEntry.key),
+      keyLen: embedEntry.key.length,
+      source: embedEntry.source,
       model,
       ok: r.ok,
       status: r.status,
@@ -160,7 +168,7 @@ export async function POST() {
 
   return NextResponse.json({
     success: true,
-    keyCount: keys.length,
+    keyCount: entries.length,
     liveKeys: liveKeys.length,
     models,
     results,

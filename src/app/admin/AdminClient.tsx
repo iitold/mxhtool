@@ -57,6 +57,8 @@ interface RuleRow {
 interface AiTestRow {
   kind: 'chat' | 'embed';
   keyLabel: string;
+  keyLen?: number;
+  source?: string;
   model: string;
   ok: boolean;
   status: number;
@@ -603,16 +605,23 @@ export default function AdminClient(props: {
                       <tr className="text-left">
                         <th className="py-1 pr-4 font-medium">Loại</th>
                         <th className="py-1 pr-4 font-medium">Key</th>
+                        <th className="py-1 pr-4 font-medium">Nguồn</th>
                         <th className="py-1 pr-4 font-medium">Model</th>
                         <th className="py-1 pr-4 font-medium">Kết quả</th>
                         <th className="py-1 font-medium">Chi tiết</th>
                       </tr>
                     </thead>
                     <tbody className="font-mono">
-                      {aiResult.results.map((r, i) => (
+                      {aiResult.results.map((r, i) => {
+                        const shortKey = (r.keyLen ?? 99) < 30;
+                        return (
                         <tr key={i} className="border-t border-slate-800">
                           <td className="py-1.5 pr-4 text-slate-400">{r.kind === 'embed' ? 'embed' : 'chat'}</td>
-                          <td className="py-1.5 pr-4 text-slate-400">{r.keyLabel}</td>
+                          <td className={`py-1.5 pr-4 ${shortKey ? 'text-amber-400' : 'text-slate-400'}`}>
+                            {r.keyLabel}
+                            {r.keyLen ? <span className="text-slate-600"> ({r.keyLen})</span> : null}
+                          </td>
+                          <td className="py-1.5 pr-4 text-slate-500">{r.source ?? '—'}</td>
                           <td className="py-1.5 pr-4 text-white">{r.model}</td>
                           <td className="py-1.5 pr-4">
                             <span
@@ -634,14 +643,17 @@ export default function AdminClient(props: {
                               : r.error}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
                 <p className="text-xs text-slate-500">
                   Gợi ý: <b className="text-slate-300">429</b> = key còn sống nhưng hết quota (bình thường, sẽ tự đổi
                   model). <b className="text-slate-300">400/403</b> = key sai hoặc bị chặn. <b className="text-slate-300">404</b> =
-                  tên model không tồn tại.
+                  tên model không tồn tại. Key bôi <b className="text-amber-400">vàng</b> là key quá ngắn (nghi rác) —
+                  xem cột <b className="text-slate-300">Nguồn</b>: <b className="text-slate-300">env:</b> nghĩa là biến môi
+                  trường còn sót, cần xoá trên Cloudflare.
                 </p>
               </div>
             )}

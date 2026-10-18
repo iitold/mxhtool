@@ -44,22 +44,31 @@ export function geminiKeysFromEnv(): string[] {
   return [...new Set(keys)];
 }
 
+export interface KeyEntry {
+  key: string;
+  source: string;
+}
+
+/** Same keys as geminiKeys() but tagged with where each one came from. */
+export async function geminiKeyEntries(): Promise<KeyEntry[]> {
+  const entries = new Map<string, string>();
+  const add = (key: string | undefined, source: string) => {
+    const k = (key ?? '').trim();
+    if (k && !entries.has(k)) entries.set(k, source);
+  };
+  add(await getSecret('GEMINI_API_KEYS'), 'UI: GEMINI_API_KEYS');
+  add(await getSecret('GEMINI_API_KEY'), 'UI: GEMINI_API_KEY');
+  for (const k of envList('GEMINI_API_KEYS')) add(k, 'env: GEMINI_API_KEYS');
+  add(env('GEMINI_API_KEY'), 'env: GEMINI_API_KEY');
+  return [...entries].map(([key, source]) => ({ key, source }));
+}
+
 /**
  * Gemini keys, DB-configured values take priority over env so they can be
  * managed from the web UI.
  */
 export async function geminiKeys(): Promise<string[]> {
-  const multi = await getSecret('GEMINI_API_KEYS');
-  const single = await getSecret('GEMINI_API_KEY');
-  const keys = [
-    ...multi
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-    ...(single ? [single] : []),
-    ...geminiKeysFromEnv()
-  ];
-  return [...new Set(keys)];
+  return (await geminiKeyEntries()).map((e) => e.key);
 }
 
 /** Fallback model chain: DB override → env → built-in default. */
