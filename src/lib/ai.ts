@@ -25,7 +25,7 @@ const DEFAULT_EMBED_MODELS = 'gemini-embedding-001,gemini-embedding-2';
 
 function splitList(value: string): string[] {
   return value
-    .split(',')
+    .split(/[\s,]+/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
@@ -52,13 +52,14 @@ export interface KeyEntry {
 /** Same keys as geminiKeys() but tagged with where each one came from. */
 export async function geminiKeyEntries(): Promise<KeyEntry[]> {
   const entries = new Map<string, string>();
-  const add = (key: string | undefined, source: string) => {
-    const k = (key ?? '').trim();
-    if (k && !entries.has(k)) entries.set(k, source);
+  const add = (value: string | undefined, source: string) => {
+    for (const key of splitList(value ?? '')) {
+      if (key && !entries.has(key)) entries.set(key, source);
+    }
   };
   add(await getSecret('GEMINI_API_KEYS'), 'UI: GEMINI_API_KEYS');
   add(await getSecret('GEMINI_API_KEY'), 'UI: GEMINI_API_KEY');
-  for (const k of envList('GEMINI_API_KEYS')) add(k, 'env: GEMINI_API_KEYS');
+  add(env('GEMINI_API_KEYS'), 'env: GEMINI_API_KEYS');
   add(env('GEMINI_API_KEY'), 'env: GEMINI_API_KEY');
   return [...entries].map(([key, source]) => ({ key, source }));
 }

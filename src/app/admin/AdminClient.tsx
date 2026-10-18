@@ -75,6 +75,8 @@ interface AiTestResponse {
   summary?: { passed: number; total: number; anyOk: boolean; liveKeys: number };
 }
 
+const MULTILINE_SECRETS = new Set(['GEMINI_API_KEYS', 'GEMINI_MODELS', 'GEMINI_EMBED_MODELS']);
+
 type TabId = 'overview' | 'appearance' | 'content' | 'settings' | 'connections' | 'logs';
 
 const TABS: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
@@ -540,22 +542,40 @@ export default function AdminClient(props: {
               </p>
             </div>
             <div className="grid md:grid-cols-2 gap-3">
-              {secrets.map((s) => (
-                <label key={s.key} className="block">
-                  <span className="flex items-center gap-2 text-xs text-slate-400 mb-1">
-                    <span className={`inline-block h-2 w-2 rounded-full ${s.set ? 'bg-emerald-500' : 'bg-slate-600'}`} />
-                    {s.key}
-                  </span>
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    placeholder={s.set ? '•••••••• (đã lưu)' : 'chưa cấu hình'}
-                    value={secretInputs[s.key] ?? ''}
-                    onChange={(e) => setSecretInputs((v) => ({ ...v, [s.key]: e.target.value }))}
-                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"
-                  />
-                </label>
-              ))}
+              {secrets.map((s) => {
+                const multiline = MULTILINE_SECRETS.has(s.key);
+                return (
+                  <label key={s.key} className={`block ${multiline ? 'md:col-span-2' : ''}`}>
+                    <span className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+                      <span className={`inline-block h-2 w-2 rounded-full ${s.set ? 'bg-emerald-500' : 'bg-slate-600'}`} />
+                      {s.key}
+                      {multiline && (
+                        <span className="text-slate-600">— mỗi giá trị 1 dòng, hoặc cách nhau dấu phẩy</span>
+                      )}
+                    </span>
+                    {multiline ? (
+                      <textarea
+                        rows={3}
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder={s.set ? '•••••••• (đã lưu — nhập mới để thay)' : 'chưa cấu hình'}
+                        value={secretInputs[s.key] ?? ''}
+                        onChange={(e) => setSecretInputs((v) => ({ ...v, [s.key]: e.target.value }))}
+                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white font-mono"
+                      />
+                    ) : (
+                      <input
+                        type="password"
+                        autoComplete="off"
+                        placeholder={s.set ? '•••••••• (đã lưu)' : 'chưa cấu hình'}
+                        value={secretInputs[s.key] ?? ''}
+                        onChange={(e) => setSecretInputs((v) => ({ ...v, [s.key]: e.target.value }))}
+                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"
+                      />
+                    )}
+                  </label>
+                );
+              })}
               {secrets.length === 0 && <p className="text-sm text-slate-500">Đang tải…</p>}
             </div>
             <button

@@ -16,7 +16,7 @@ export function requireEnv(name: string): string {
 
 export function envList(name: string): string[] {
   return env(name)
-    .split(',')
+    .split(/[\s,]+/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
