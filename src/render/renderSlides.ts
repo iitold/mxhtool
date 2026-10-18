@@ -1,16 +1,18 @@
 /**
  * Playwright renderer — HTML/CSS → PNG buffers (one per slide).
- * Runs in Node (GitHub Actions), never on Vercel.
+ * Runs in Node (GitHub Actions), never on Cloudflare/Vercel.
  */
 import { chromium } from 'playwright';
 import { envInt } from '@/lib/env';
 import { buildDocument } from './slideTemplate';
-import { getTheme } from './theme';
+import type { Theme } from './theme';
+import type { LayoutOptions } from './layout';
 
 export interface RenderOptions {
   slides: string[];
   title: string;
-  themeKey: string;
+  theme: Theme;
+  layout: LayoutOptions;
   footerHandle: string;
   width?: number;
   height?: number;
@@ -21,12 +23,12 @@ export async function renderSlides(o: RenderOptions): Promise<Buffer[]> {
   const width = o.width ?? 1080;
   const height = o.height ?? 1920;
   const scale = o.scale ?? envInt('RENDER_SCALE', 2);
-  const theme = getTheme(o.themeKey);
 
   const html = buildDocument({
     slides: o.slides,
     title: o.title,
-    theme,
+    theme: o.theme,
+    layout: o.layout,
     footerHandle: o.footerHandle,
     width,
     height

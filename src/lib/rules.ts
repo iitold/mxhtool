@@ -11,7 +11,7 @@ export interface ContentRule {
 export const CONTENT_RULES: Record<string, ContentRule> = {
   myth_buster: {
     id: 'myth_buster',
-    name: '💥 Myth Buster',
+    name: 'Myth Buster',
     desc: 'Phá bỏ hiểu lầm phổ biến bằng bằng chứng',
     style:
       'Slide 1 (HOOK): nêu 1 quan điểm SAI mà nhiều dev tin, kiểu "Nhiều người nghĩ X — nhưng thực tế khác hoàn toàn".\n' +
@@ -20,7 +20,7 @@ export const CONTENT_RULES: Record<string, ContentRule> = {
   },
   challenge: {
     id: 'challenge',
-    name: '🧩 Challenge',
+    name: 'Challenge',
     desc: 'Đố output — kích thích bình luận',
     style:
       'Slide 1 (HOOK): "Đoán output đoạn code này" hoặc "Kết quả bất ngờ hơn bạn nghĩ".\n' +
@@ -30,7 +30,7 @@ export const CONTENT_RULES: Record<string, ContentRule> = {
   },
   before_after: {
     id: 'before_after',
-    name: '🔄 Before / After',
+    name: 'Before / After',
     desc: 'Refactor code trước/sau',
     style:
       'Slide 1 (HOOK): "Cùng refactor đoạn này".\n' +
@@ -40,7 +40,7 @@ export const CONTENT_RULES: Record<string, ContentRule> = {
   },
   storytime: {
     id: 'storytime',
-    name: '📖 Production Story',
+    name: 'Production Story',
     desc: 'Sự cố production thật + postmortem',
     style:
       'Slide 1 (HOOK): "Production sập vì..." hoặc "Sự cố tốn X giờ debug".\n' +
@@ -49,7 +49,7 @@ export const CONTENT_RULES: Record<string, ContentRule> = {
   },
   speed_run: {
     id: 'speed_run',
-    name: '⚡ Speed Run',
+    name: 'Speed Run',
     desc: 'Code ngắn hơn nhưng đúng hơn',
     style:
       'Slide 1 (HOOK): "30 dòng còn 3 dòng" hoặc "1 hàm thay boilerplate".\n' +
@@ -59,7 +59,7 @@ export const CONTENT_RULES: Record<string, ContentRule> = {
   },
   hot_take: {
     id: 'hot_take',
-    name: '🔥 Hot Take',
+    name: 'Hot Take',
     desc: 'Quan điểm có tranh luận nhưng có lý lẽ',
     style:
       'Slide 1 (HOOK): quan điểm mạnh có cơ sở ("Bạn có thể không cần ORM").\n' +
@@ -68,7 +68,7 @@ export const CONTENT_RULES: Record<string, ContentRule> = {
   },
   meme_explain: {
     id: 'meme_explain',
-    name: '😂 Meme Explain',
+    name: 'Meme Explain',
     desc: 'Giải mã meme dev ẩn sau kiến thức',
     style:
       'Slide 1 (HOOK): mô tả 1 tình huống/meme quen thuộc của dev.\n' +
@@ -78,7 +78,7 @@ export const CONTENT_RULES: Record<string, ContentRule> = {
   },
   salary_career: {
     id: 'salary_career',
-    name: '💰 Career & Growth',
+    name: 'Career & Growth',
     desc: 'Career path, lương, kỹ năng thực chiến',
     style:
       'Slide 1 (HOOK): "1 năm vs 3 năm — gap thật sự là gì?".\n' +

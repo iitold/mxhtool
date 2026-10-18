@@ -33,15 +33,15 @@ export async function sendTelegram(html: string): Promise<boolean> {
 
 export async function notifyPostSuccess(topic: string, targets: string[]) {
   await sendTelegram(
-    `✅ <b>Đã đăng bài</b>\n\n📌 ${topic}\n${targets.map((t) => `• ${t}`).join('\n')}`
+    `<b>Đã đăng bài</b>\n\n${topic}\n${targets.map((t) => `• ${t}`).join('\n')}`
   );
   logInfo('telegram', 'Success notification sent');
 }
 
 export async function notifyPostFailed(topic: string, error: string) {
-  await sendTelegram(`❌ <b>Đăng bài thất bại</b>\n\n📌 ${topic}\n<code>${error}</code>`);
+  await sendTelegram(`<b>Đăng bài thất bại</b>\n\n${topic}\n<code>${error}</code>`);
 }
 
 export async function notifySystem(message: string) {
-  await sendTelegram(`ℹ️ <b>System</b>\n${message}`);
+  await sendTelegram(`<b>System</b>\n${message}`);
 }

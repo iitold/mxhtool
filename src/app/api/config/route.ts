@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { setConfig } from '@/lib/config';
+import { ALL_FIELD_KEYS } from '@/lib/configSchema';
 import { requireUser } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -17,11 +18,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
   }
 
+  const allowed = new Set(ALL_FIELD_KEYS);
   const saved: string[] = [];
   for (const [key, value] of Object.entries(values)) {
+    if (!allowed.has(key)) continue;
     await setConfig(key, String(value));
     saved.push(key);
   }
 
-  return NextResponse.json({ success: true, message: `Đã lưu: ${saved.join(', ')}` });
+  return NextResponse.json({ success: true, message: `Đã lưu ${saved.length} mục cấu hình` });
 }

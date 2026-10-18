@@ -47,7 +47,7 @@ function buildPrompt(topic: string, ruleId: string, minSlides: number, maxSlides
     `── CONTENT RULE: ${rule.name} ──\n${rule.style}\n\n` +
     CONTENT_STRUCTURE +
     '\n' +
-    `📌 CHỦ ĐỀ: ${topic}\n\n` +
+    `CHỦ ĐỀ: ${topic}\n\n` +
     'Trả về JSON CHÍNH XÁC theo format:\n' +
     '{\n' +
     '  "title": "tiêu đề bắt mắt, nêu rõ công nghệ/ngôn ngữ (tối đa 10 từ)",\n' +
@@ -56,7 +56,7 @@ function buildPrompt(topic: string, ruleId: string, minSlides: number, maxSlides
     `    "hook theo phong cách ${rule.id} (KHÔNG ghi 'Slide 1:')",\n` +
     '    "Tiêu đề ý 1\\n• giải thích ngắn\\n• ```python\\ncode\\n```"\n' +
     '  ],\n' +
-    '  "caption": "caption tự nhiên + emoji + hashtag",\n' +
+    '  "caption": "caption tự nhiên + hashtag (KHÔNG dùng emoji)",\n' +
     '  "keywords": ["kw1", "kw2", "kw3"]\n' +
     '}\n\n' +
     'QUY TẮC BẮT BUỘC:\n' +
@@ -95,7 +95,7 @@ function validateContent(raw: RawContent, topic: string, minSlides: number, maxS
   slides.length = Math.min(slides.length, maxSlides);
 
   const rawTitle = (raw.title || topic).trim().slice(0, 120);
-  let caption = (raw.caption || rawTitle).trim();
+  let caption = removeEmojis((raw.caption || rawTitle).trim());
   if (!caption.includes('#')) caption += ' #coding #programming #tech #developer #tips';
 
   const fixed = fixTitleNumber(rawTitle, slides);

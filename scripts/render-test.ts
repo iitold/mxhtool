@@ -1,13 +1,19 @@
 /**
  * Local render test: `npm run render:test`
- * Writes PNGs to ./renders so you can eyeball the slide design.
+ * Writes JPEGs to ./renders so you can eyeball the slide design.
+ * Override theme with THEME=ocean npm run render:test
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { renderSlides } from '../src/render/renderSlides';
+import { resolveTheme } from '../src/render/theme';
+import { resolveLayout } from '../src/render/layout';
+
+const themeKey = process.env.THEME ?? 'dark_slate';
 
 const sample = {
   title: 'WeakMap trong JavaScript',
-  themeKey: process.env.THEME ?? 'dark_slate',
+  theme: resolveTheme(themeKey, {}),
+  layout: resolveLayout({}),
   footerHandle: '@it.old',
   slides: [
     'Bạn có biết WeakMap có thể chống memory leak mà bạn không ngờ tới?',

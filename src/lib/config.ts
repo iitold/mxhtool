@@ -13,12 +13,37 @@ export const DEFAULT_CONFIG: Record<string, string> = {
   slides_per_post_max: '5',
   words_per_slide_max: '80',
   content_language: 'vi',
-  color_theme: 'dark_slate',
-  footer_handle: '@it.old',
   quality_threshold: '7',
   enabled_content_rules:
     'myth_buster,challenge,before_after,storytime,speed_run,hot_take,meme_explain,salary_career',
-  trends_enabled: 'true'
+  trends_enabled: 'true',
+
+  // ── Appearance: colors ──
+  color_theme: 'dark_slate',
+  custom_color_bg: '#0b1220',
+  custom_color_card: '#111a2e',
+  custom_color_card_border: '#22304d',
+  custom_color_accent1: '#60a5fa',
+  custom_color_accent2: '#fb923c',
+  custom_color_accent3: '#34d399',
+  custom_color_title: '#f1f5f9',
+  custom_color_body: '#cbd5e1',
+  custom_color_muted: '#94a3b8',
+  custom_color_code_bg: '#0a0f1c',
+  custom_color_code_text: '#e2e8f0',
+
+  // ── Appearance: layout ──
+  slide_width_px: '1080',
+  slide_height_px: '1920',
+  font_family: 'Inter',
+  bullet_style: 'dot',
+  content_valign: 'center',
+  show_header: 'true',
+  show_logo: 'true',
+  show_footer: 'true',
+  show_slide_number: 'true',
+
+  footer_handle: '@it.old'
 };
 
 const TTL_MS = 30_000;

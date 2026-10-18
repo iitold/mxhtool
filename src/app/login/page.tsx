@@ -114,7 +114,7 @@ export default function LoginPage() {
           disabled={loading !== ''}
           className="w-full text-xs text-slate-400 hover:text-slate-200"
         >
-          {sent ? '✅ Đã gửi link đăng nhập vào email' : 'Gửi magic link qua email'}
+          {sent ? 'Đã gửi link đăng nhập vào email' : 'Gửi magic link qua email'}
         </button>
 
         {error && <p className="text-sm text-red-400">{error}</p>}

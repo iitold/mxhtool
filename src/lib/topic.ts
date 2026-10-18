@@ -8,18 +8,18 @@ import { logInfo } from './logger';
 import { fetchTrends } from './trends';
 
 const CATEGORIES = [
-  '💻 Deep-dive ngôn ngữ: feature ít biết, so sánh thực tế, cơ chế bên trong',
-  '🏗 Architecture & Patterns: design patterns, clean code, SOLID thực chiến',
-  '⚡ Performance: bottleneck, profiling, tối ưu có số liệu',
-  '🔒 Security: lỗ hổng phổ biến, footgun bảo mật, best practices',
-  '🛠 DevOps: Docker, CI/CD, deploy, monitoring',
-  '🗄 Database: query tuning, indexing, schema design',
-  '🐛 Debug stories: lỗi production thật, postmortem',
-  '🔧 Tools & Productivity: IDE, CLI, workflow automation',
-  '🧪 Testing: unit/integration/TDD trong dự án thật',
-  '🌐 API & System Design: REST vs GraphQL, caching, rate limiting',
-  '🤖 AI-assisted coding: prompt cho code, review output AI',
-  '📈 Career & Soft skills: code review, estimation, collaboration'
+  'Deep-dive ngôn ngữ: feature ít biết, so sánh thực tế, cơ chế bên trong',
+  'Architecture & Patterns: design patterns, clean code, SOLID thực chiến',
+  'Performance: bottleneck, profiling, tối ưu có số liệu',
+  'Security: lỗ hổng phổ biến, footgun bảo mật, best practices',
+  'DevOps: Docker, CI/CD, deploy, monitoring',
+  'Database: query tuning, indexing, schema design',
+  'Debug stories: lỗi production thật, postmortem',
+  'Tools & Productivity: IDE, CLI, workflow automation',
+  'Testing: unit/integration/TDD trong dự án thật',
+  'API & System Design: REST vs GraphQL, caching, rate limiting',
+  'AI-assisted coding: prompt cho code, review output AI',
+  'Career & Soft skills: code review, estimation, collaboration'
 ];
 
 function cleanTopic(raw: string): string {

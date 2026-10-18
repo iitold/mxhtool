@@ -11,7 +11,7 @@ insert into public.config (key, value, description) values
   ('slides_per_post_max', '5',                 'Số slide tối đa'),
   ('words_per_slide_max', '80',                'Số từ tối đa mỗi slide'),
   ('content_language',    'vi',                'Ngôn ngữ nội dung'),
-  ('color_theme',         'dark_slate',        'Theme màu slide: dark_slate | light_blue | neon | sunset'),
+  ('color_theme',         'dark_slate',        'Bảng màu slide: dark_slate | light_blue | neon | sunset | ocean | custom'),
   ('footer_handle',       '@it.old',           'Handle hiển thị ở footer slide'),
   ('quality_threshold',   '7',                 'Điểm tối thiểu của quality gate (0-10). Thấp hơn sẽ sinh lại.'),
   ('enabled_content_rules',

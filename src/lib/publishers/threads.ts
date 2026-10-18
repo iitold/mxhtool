@@ -21,7 +21,7 @@ export function getThreadsCaption(content: {
   const lines: string[] = [];
   lines.push(content.caption || content.title || '');
   lines.push('');
-  lines.push('📱 TikTok: @it.old');
+  lines.push('TikTok: @it.old');
   if (content.keywords?.length) {
     lines.push(content.keywords.slice(0, 4).map((k) => '#' + k.replace(/\s+/g, '')).join(' '));
   }

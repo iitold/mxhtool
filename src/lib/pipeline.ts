@@ -3,7 +3,7 @@
  * Runs in Node (GitHub Actions), not on Vercel.
  */
 import { embed } from './ai';
-import { getConfig, getConfigInt } from './config';
+import { getAllConfig, getConfig, getConfigInt } from './config';
 import {
   acquireLock,
   addPostTarget,
@@ -20,6 +20,8 @@ import { postToFacebook } from './publishers/facebook';
 import { postToThreads } from './publishers/threads';
 import { postPhotoCarousel } from './publishers/tiktok';
 import { renderSlides } from '@/render/renderSlides';
+import { resolveTheme } from '@/render/theme';
+import { resolveLayout } from '@/render/layout';
 import { uploadImages } from './storage';
 import { notifyPostFailed, notifyPostSuccess, sendTelegram } from './telegram';
 import { generateContent } from './content';
@@ -100,13 +102,18 @@ export async function runPipeline(opts: {
     await updatePost(postId, { status: 'rendering' });
 
     // ── 5. Render slides ──
-    const themeKey = await getConfig('color_theme');
-    const footerHandle = await getConfig('footer_handle');
+    const cfg = await getAllConfig();
+    const theme = resolveTheme(cfg.color_theme ?? 'dark_slate', cfg);
+    const layout = resolveLayout(cfg);
+    const footerHandle = cfg.footer_handle ?? '@it.old';
     const buffers = await renderSlides({
       slides: content.slides,
       title: content.title,
-      themeKey,
-      footerHandle
+      theme,
+      layout,
+      footerHandle,
+      width: Number(cfg.slide_width_px) || 1080,
+      height: Number(cfg.slide_height_px) || 1920
     });
     if (buffers.length < 2) throw new Error(`Rendered only ${buffers.length} slides`);
     logInfo('pipeline', `Rendered ${buffers.length} slides`);
@@ -147,9 +154,9 @@ export async function runPipeline(opts: {
     await updatePost(postId, { status: 'posted', posted_at: new Date().toISOString() });
     await saveTopic(topic, content.rule_id, embedding);
 
-    const platforms = ['TikTok ✅'];
+    const platforms = ['TikTok'];
     await notifyPostSuccess(topic, platforms);
-    logInfo('pipeline', `✅ Posted: ${topic}`);
+    logInfo('pipeline', `Posted: ${topic}`);
 
     return { posted: true, topic, imageUrls };
   } catch (e: any) {
@@ -158,7 +165,7 @@ export async function runPipeline(opts: {
     if (postId) {
       await updatePost(postId, { status: 'failed', error: e.message }).catch(() => undefined);
     }
-    await sendTelegram(`❌ <b>Pipeline thất bại</b>\n📌 ${topic || '?'}\n<code>${e.message}</code>`).catch(
+    await sendTelegram(`<b>Pipeline thất bại</b>\n${topic || '?'}\n<code>${e.message}</code>`).catch(
       () => undefined
     );
     await notifyPostFailed(topic || 'unknown', e.message);

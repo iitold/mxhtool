@@ -16,8 +16,8 @@ export function getFbCaption(content: { caption?: string; title?: string; keywor
   const lines: string[] = [];
   lines.push(content.caption || content.title || '');
   lines.push('');
-  lines.push('📱 TikTok: @it.old');
-  lines.push('🧵 Threads: @bztiensinh');
+  lines.push('TikTok: @it.old');
+  lines.push('Threads: @bztiensinh');
   lines.push('');
   if (content.keywords?.length) {
     lines.push(content.keywords.map((k) => '#' + k.replace(/\s+/g, '_')).join(' '));
