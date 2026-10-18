@@ -94,9 +94,11 @@ Vào `/admin` → mục **Credentials & Secrets** để nhập/cập nhật mọ
 
 ### 6. GitHub Actions
 1. Push repo lên GitHub.
-2. Settings → Secrets and variables → Actions: thêm **tất cả** biến trong `.env.example`
-   (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEYS`, `TIKTOK_*`, `FB_*`, `THREADS_*`, `TELEGRAM_*`, `GITHUB_*`...).
-3. Để nút "Đăng ngay" trên admin hoạt động: tạo **Personal Access Token** (quyền `actions:write` + `contents:read`) → secret `GITHUB_TOKEN`, `GITHUB_REPO=owner/repo`.
+2. Settings → Secrets and variables → Actions: thêm các biến trong `.env.example`
+   (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_*`, `TIKTOK_*`, `FB_*`, `THREADS_*`, `TELEGRAM_*`).
+   ⚠️ **Không** đặt secret tên bắt đầu bằng `GITHUB_` — GitHub chặn (trùng quy ước với `GITHUB_TOKEN` hệ thống).
+3. Nút "Đăng ngay" trên admin dùng `GITHUB_TOKEN` + `GITHUB_REPO` → nhập ở tab **Credentials & Secrets** trong `/admin` (lưu vào Supabase) hoặc đặt env var trên **Cloudflare Pages**, **không** phải GitHub Actions.
+   Tạo **Personal Access Token** (quyền `actions:write` + `contents:read`, có thể kèm `workflow`) cho tài khoản `iitold`, `GITHUB_REPO=iitold/mxhtool`.
 4. Chạy tay: Actions → **pipeline** → Run workflow (bật `force`).
 
 > ⚠️ GitHub tắt scheduled workflow sau 60 ngày không commit — `keepalive.yml` tự commit mỗi tuần để tránh.
