@@ -6,7 +6,7 @@ export const runtime = 'edge';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const MAX_KEYS = 3;
-const MAX_MODELS = 5;
+const MAX_MODELS = 6;
 
 interface ChatResult {
   kind: 'chat';
