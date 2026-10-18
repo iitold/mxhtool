@@ -1,8 +1,11 @@
 name: deploy-pages
 
 on:
-  push:
-    branches: [main]
+  # Manual only — Cloudflare Pages Git integration auto-builds on push.
+  # Enable the push trigger below only if you do NOT use Git integration
+  # (requires CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID secrets).
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 concurrency:
