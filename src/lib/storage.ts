@@ -30,7 +30,8 @@ export async function uploadImages(buffers: Buffer[], prefix: string): Promise<s
     const live = await waitForPublicUrls(urls);
     if (!live) {
       throw new Error(
-        'Ảnh đã đẩy lên GitHub nhưng chưa public (GitHub Pages cần thời gian build). Thử lại sau 1-2 phút.'
+        `Ảnh đã đẩy lên GitHub nhưng chưa public: ${urls[0]} — kiểm tra GITHUB_PAGES_BASE (phải là ` +
+          'https://thanhtechzone.github.io/tiktok-images/) và GITHUB_PAGES_PATH.'
       );
     }
     return urls;

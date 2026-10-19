@@ -49,10 +49,27 @@ async function ghJson(
 
 /** Derives the Pages base URL from `owner/repo` unless an explicit base is set. */
 export function pagesBaseUrl(repo: string, base?: string): string {
-  if (base) return base.endsWith('/') ? base : base + '/';
   const [owner, name] = repo.split('/');
-  if (name === `${owner}.github.io`) return `https://${owner}.github.io/`;
-  return `https://${owner}.github.io/${name}/`;
+  const isUserPage = name === `${owner}.github.io`;
+  const derived = isUserPage ? `https://${owner}.github.io/` : `https://${owner}.github.io/${name}/`;
+  if (!base) return derived;
+
+  const normalized = base.endsWith('/') ? base : base + '/';
+  // Auto-fix a common mistake: a project page base without the repo segment,
+  // e.g. https://user.github.io/ instead of https://user.github.io/repo/.
+  if (!isUserPage) {
+    try {
+      const u = new URL(normalized);
+      if (u.hostname.endsWith('.github.io')) {
+        const firstSegment = u.pathname.replace(/^\/+/, '').split('/')[0];
+        if (firstSegment !== name) return `https://${u.hostname}/${name}/`;
+      }
+    } catch {
+      // Not a valid URL — fall back to the derived value.
+      return derived;
+    }
+  }
+  return normalized;
 }
 
 /**
@@ -143,6 +160,7 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
   if (lastError) throw lastError;
 
   logInfo('storage', `Uploaded ${urls.length} images to GitHub Pages ${repo} (1 commit)`);
+  logInfo('storage', `Public base: ${base}`);
   return urls;
 }
 
