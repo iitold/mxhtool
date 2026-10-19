@@ -74,19 +74,7 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
   }
   const api = `https://api.github.com/repos/${repo}`;
 
-  // 1. Current branch head + base tree.
-  const ref = await ghJson(
-    token,
-    `${api}/git/ref/heads/${encodeURIComponent(branch)}`,
-    { method: 'GET' },
-    repo,
-    tokenLabel
-  );
-  const parentSha: string = ref.object.sha;
-  const commit = await ghJson(token, `${api}/git/commits/${parentSha}`, { method: 'GET' }, repo, tokenLabel);
-  const baseTree: string = commit.tree.sha;
-
-  // 2. One blob per slide.
+  // 1. One blob per slide (independent of branch state).
   const urls: string[] = [];
   const tree: { path: string; mode: string; type: string; sha: string }[] = [];
   for (let i = 0; i < buffers.length; i++) {
@@ -103,35 +91,56 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
     urls.push(base + rel);
   }
 
-  // 3. New tree → commit → move branch.
-  const newTree = await ghJson(
-    token,
-    `${api}/git/trees`,
-    { method: 'POST', body: JSON.stringify({ base_tree: baseTree, tree }) },
-    repo,
-    tokenLabel
-  );
-  const newCommit = await ghJson(
-    token,
-    `${api}/git/commits`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        message: `slides: ${prefix} (${buffers.length} images)`,
-        tree: newTree.sha,
-        parents: [parentSha]
-      })
-    },
-    repo,
-    tokenLabel
-  );
-  await ghJson(
-    token,
-    `${api}/git/refs/heads/${encodeURIComponent(branch)}`,
-    { method: 'PATCH', body: JSON.stringify({ sha: newCommit.sha }) },
-    repo,
-    tokenLabel
-  );
+  // 2. New tree → commit → move branch. Retry if another commit lands first.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const ref = await ghJson(
+        token,
+        `${api}/git/ref/heads/${encodeURIComponent(branch)}`,
+        { method: 'GET' },
+        repo,
+        tokenLabel
+      );
+      const parentSha: string = ref.object.sha;
+      const parent = await ghJson(token, `${api}/git/commits/${parentSha}`, { method: 'GET' }, repo, tokenLabel);
+      const newTree = await ghJson(
+        token,
+        `${api}/git/trees`,
+        { method: 'POST', body: JSON.stringify({ base_tree: parent.tree.sha, tree }) },
+        repo,
+        tokenLabel
+      );
+      const newCommit = await ghJson(
+        token,
+        `${api}/git/commits`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            message: `slides: ${prefix} (${buffers.length} images)`,
+            tree: newTree.sha,
+            parents: [parentSha]
+          })
+        },
+        repo,
+        tokenLabel
+      );
+      await ghJson(
+        token,
+        `${api}/git/refs/heads/${encodeURIComponent(branch)}`,
+        { method: 'PATCH', body: JSON.stringify({ sha: newCommit.sha }) },
+        repo,
+        tokenLabel
+      );
+      lastError = undefined;
+      break;
+    } catch (e) {
+      lastError = e;
+      if (!/HTTP (409|422)/.test(String(e))) throw e;
+      await sleep(2000);
+    }
+  }
+  if (lastError) throw lastError;
 
   logInfo('storage', `Uploaded ${urls.length} images to GitHub Pages ${repo} (1 commit)`);
   return urls;
@@ -139,32 +148,34 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
 
 /**
  * Waits until the slides are publicly reachable (GitHub Pages needs a build).
- * Checks the first and last URL (they share the same build). Returns false on timeout.
+ * Probes with a cache-busting query so an early 404 is never cached on the
+ * canonical URL that TikTok will fetch. Returns false on timeout.
  */
 export async function waitForPublicUrls(
   urls: string[],
-  { tries = 60, delayMs = 5000 } = {}
+  { tries = 96, delayMs = 5000 } = {}
 ): Promise<boolean> {
-  const probes = urls.length > 1 ? [urls[0], urls[urls.length - 1]] : urls;
+  const probe = urls[0];
+  let last = 'no response';
   for (let attempt = 0; attempt < tries; attempt++) {
-    let allOk = true;
-    for (const url of probes) {
-      try {
-        const res = await fetch(url, { method: 'GET', redirect: 'error' });
-        if (!res.ok) {
-          allOk = false;
-          break;
-        }
-      } catch {
-        allOk = false;
-        break;
+    try {
+      const sep = probe.includes('?') ? '&' : '?';
+      const res = await fetch(`${probe}${sep}mxhtcb=${Date.now()}-${attempt}`, {
+        method: 'HEAD',
+        cache: 'no-store',
+        redirect: 'follow'
+      });
+      last = `HTTP ${res.status}`;
+      const type = res.headers.get('content-type') ?? '';
+      if (res.ok && type.startsWith('image/')) {
+        logInfo('storage', `Images are live (after ~${attempt * (delayMs / 1000)}s)`);
+        return true;
       }
-    }
-    if (allOk) {
-      logInfo('storage', `Images are live (after ~${attempt * (delayMs / 1000)}s)`);
-      return true;
+    } catch (e: any) {
+      last = e?.message ?? 'fetch error';
     }
     await sleep(delayMs);
   }
+  logInfo('storage', `Images still not public after ~${(tries * delayMs) / 1000}s (last: ${last})`);
   return false;
 }
