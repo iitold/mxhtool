@@ -83,7 +83,8 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
   const tokenLabel = pagesToken ? 'GITHUB_PAGES_TOKEN' : 'GITHUB_TOKEN (dự phòng)';
   const branch = (await getSecret('GITHUB_PAGES_BRANCH')) || 'main';
   const base = pagesBaseUrl(repo, await getSecret('GITHUB_PAGES_BASE'));
-  // Repo folder that GitHub Pages publishes from (e.g. "docs"); empty = branch root.
+  // Subfolder inside the repo where slides are stored. It is part of the public
+  // URL too (the repo publishes from its root), e.g. /slides/<prefix>/slide_1.jpeg.
   const repoPath = (await getSecret('GITHUB_PAGES_PATH')).replace(/^\/+|\/+$/g, '');
 
   if (!repo || !token) {
@@ -105,7 +106,7 @@ export async function uploadToGitHubPages(buffers: Buffer[], prefix: string): Pr
       tokenLabel
     );
     tree.push({ path: filePath, mode: '100644', type: 'blob', sha: blob.sha });
-    urls.push(base + rel);
+    urls.push(base + filePath);
   }
 
   // 2. New tree → commit → move branch. Retry if another commit lands first.
