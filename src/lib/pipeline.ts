@@ -35,6 +35,22 @@ export interface PipelineResult {
   imageUrls?: string[];
 }
 
+/** Folder stamp in Vietnam time: YYYYMMDD_HHMMSS. */
+function vnStamp(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
+  return `${get('year')}${get('month')}${get('day')}_${get('hour')}${get('minute')}${get('second')}`;
+}
+
 export async function runPipeline(opts: {
   topicOverride?: string;
   force?: boolean;
@@ -119,8 +135,8 @@ export async function runPipeline(opts: {
     logInfo('pipeline', `Rendered ${buffers.length} slides`);
 
     // ── 6. Upload ──
-    const stamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 15);
-    const imageUrls = await uploadImages(buffers, `${stamp}_${postId.slice(0, 8)}`);
+    const stamp = vnStamp();
+    const imageUrls = await uploadImages(buffers, `mxht_${stamp}_${postId.slice(0, 8)}`);
     await updatePost(postId, { image_urls: imageUrls, status: 'posting' });
 
     // ── 7. Publish ──
